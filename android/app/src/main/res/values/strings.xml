@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ConnectToPhone</string>
+    <string name="service_running_title">ConnectToPhone Ativo</string>
+    <string name="service_connected">Conectado ao Linux PC</string>
+    <string name="service_searching">Procurando PC na rede local...</string>
+    <string name="channel_name">Serviço de Segundo Plano</string>
+    <string name="channel_description">Mantém a conexão contínua entre celular e PC Linux</string>
+    <string name="screen_channel_name">Transmissão de Tela</string>
+    <string name="accessibility_description">Permite ao ConnectToPhone sincronizar a área de transferência mesmo com o aplicativo em segundo plano.</string>
+</resources>

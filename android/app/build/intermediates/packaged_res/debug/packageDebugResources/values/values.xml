@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#3B82F6</color>
+    <color name="background_dark">#18181B</color>
+    <color name="card_border">#3F3F46</color>
+    <color name="card_border_light">#52525B</color>
+    <color name="danger">#EF4444</color>
+    <color name="primary">#2563EB</color>
+    <color name="primary_dark">#1E40AF</color>
+    <color name="primary_hover">#1D4ED8</color>
+    <color name="success">#22C55E</color>
+    <color name="surface_dark">#27272A</color>
+    <color name="text_muted">#71717A</color>
+    <color name="text_primary">#F4F4F5</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="warning">#F59E0B</color>
+    <string name="accessibility_description">Permite ao ConnectToPhone sincronizar a área de transferência mesmo com o aplicativo em segundo plano.</string>
+    <string name="app_name">ConnectToPhone</string>
+    <string name="channel_description">Mantém a conexão contínua entre celular e PC Linux</string>
+    <string name="channel_name">Serviço de Segundo Plano</string>
+    <string name="screen_channel_name">Transmissão de Tela</string>
+    <string name="service_connected">Conectado ao Linux PC</string>
+    <string name="service_running_title">ConnectToPhone Ativo</string>
+    <string name="service_searching">Procurando PC na rede local...</string>
+    <style name="Theme.ConnectToPhone" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:windowBackground">@color/background_dark</item>
+    </style>
+</resources>
