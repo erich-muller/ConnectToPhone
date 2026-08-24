@@ -1,0 +1,13 @@
+[Clipboard] Service hooked into system clipboard
+[Discovery] Service started on port 42101
+[Connection] State: LISTENING (Porta 42100)
+[Connection] WebSocket server listening on 0.0.0.0:42100
+[Clipboard] Local text copied: 'No Computador Linux', notifying phone
+[Connection] 📱 Nova conexão de cliente recebida de 192.168.1.4
+[Connection] 🔐 Pedido de autenticação automática (AUTH_CONNECT) de 'samsung SM-X620' (192.168.1.4, id=e9002040-2856-41c1-bfc3-012b837caf47)
+[Connection] ✅ Token de autenticação válido! Conexão aceita.
+[Connection] State: CONNECTED (Conectado a samsung SM-X620)
+[App] Shutting down services...
+[Discovery] Service stopped
+[Connection] Net thread loop exception: Event loop stopped before Future completed.
+[Connection] State: DISCONNECTED (Stopped)

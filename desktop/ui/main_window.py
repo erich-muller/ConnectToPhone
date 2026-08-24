@@ -318,6 +318,7 @@ class MainWindow(QMainWindow):
             parent=self
         )
         self.pair_dialog.pin_regenerated.connect(lambda old_pin: self.pair_dialog.update_pin(self.conn.generate_new_pin()))
+        self.conn.paired_success.connect(lambda dev_id, dev_name: self.pair_dialog.on_paired_success(dev_name))
         self.pair_dialog.exec()
 
     def _open_screen_mirror(self):

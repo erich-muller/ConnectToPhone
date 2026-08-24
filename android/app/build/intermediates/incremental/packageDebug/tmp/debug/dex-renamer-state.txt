@@ -1,11 +1,11 @@
-#Sun Aug 16 18:17:48 BRT 2026
-base.0=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
-base.1=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
-base.2=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/1/classes.dex
-base.3=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/12/classes.dex
-base.4=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/13/classes.dex
-base.5=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/3/classes.dex
-base.6=/home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes2.dex
+#Mon Aug 24 13:16:10 BRT 2026
+base.0=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
+base.1=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+base.2=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/1/classes.dex
+base.3=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/12/classes.dex
+base.4=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/13/classes.dex
+base.5=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/3/classes.dex
+base.6=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes2.dex
 path.0=classes.dex
 path.1=0/classes.dex
 path.2=1/classes.dex

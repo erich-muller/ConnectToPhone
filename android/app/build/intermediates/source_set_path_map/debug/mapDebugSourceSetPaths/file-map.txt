@@ -26,10 +26,10 @@ com.connecttophone.app-core-1.12.0-24 /home/erich/.gradle/caches/transforms-4/d7
 com.connecttophone.app-jetified-emoji2-1.2.0-25 /home/erich/.gradle/caches/transforms-4/e1fb9fc892c43885899e64ca01640228/transformed/jetified-emoji2-1.2.0/res
 com.connecttophone.app-lifecycle-runtime-2.6.1-26 /home/erich/.gradle/caches/transforms-4/f4b4b9095d093457f00f318ec0d03d36/transformed/lifecycle-runtime-2.6.1/res
 com.connecttophone.app-core-runtime-2.2.0-27 /home/erich/.gradle/caches/transforms-4/ff3f7c37ef22c714a0f402766fa0d22e/transformed/core-runtime-2.2.0/res
-com.connecttophone.app-pngs-28 /home/erich/Documentos/ConnectToPhone/android/app/build/generated/res/pngs/debug
-com.connecttophone.app-resValues-29 /home/erich/Documentos/ConnectToPhone/android/app/build/generated/res/resValues/debug
-com.connecttophone.app-packageDebugResources-30 /home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.connecttophone.app-packageDebugResources-31 /home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.connecttophone.app-debug-32 /home/erich/Documentos/ConnectToPhone/android/app/build/intermediates/merged_res/debug/mergeDebugResources
-com.connecttophone.app-debug-33 /home/erich/Documentos/ConnectToPhone/android/app/src/debug/res
-com.connecttophone.app-main-34 /home/erich/Documentos/ConnectToPhone/android/app/src/main/res
+com.connecttophone.app-pngs-28 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/generated/res/pngs/debug
+com.connecttophone.app-resValues-29 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/generated/res/resValues/debug
+com.connecttophone.app-packageDebugResources-30 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.connecttophone.app-packageDebugResources-31 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.connecttophone.app-debug-32 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.connecttophone.app-debug-33 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/debug/res
+com.connecttophone.app-main-34 /home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/res

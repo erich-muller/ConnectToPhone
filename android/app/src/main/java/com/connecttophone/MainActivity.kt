@@ -50,7 +50,40 @@ class MainActivity : AppCompatActivity() {
 
         ensureCompanionServiceRunning()
         setupUI()
+        setupCompanionListeners()
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateDeviceStatus()
+        setupCompanionListeners()
+    }
+
+    private fun setupCompanionListeners() {
+        CompanionService.onPairingStateChangedListener = { success ->
+            runOnUiThread {
+                updateDeviceStatus()
+                if (success) {
+                    binding.etPin.setText("")
+                    Toast.makeText(this, "✅ Pareamento concluído com sucesso!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "❌ PIN incorreto ou pareamento rejeitado", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        CompanionService.onConnectionStateChangedListener = { _, _ ->
+            runOnUiThread {
+                updateDeviceStatus()
+            }
+        }
+        CompanionService.onPcDiscoveredListener = { _, pcName, ip, _ ->
+            runOnUiThread {
+                if (!prefs.isPaired) {
+                    binding.tvStatus.text = "🟡 PC encontrado ($pcName em $ip). Digite o PIN ou escaneie o QR."
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -129,8 +162,14 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatus.text = "🟢 Conectado ao PC na rede local"
             binding.tvStatus.setTextColor(getColor(R.color.success))
         } else {
-            binding.tvPcName.text = "ConnectToPhone"
-            binding.tvStatus.text = "🟡 Aguardando pareamento na rede local"
+            val discovered = CompanionService.lastDiscoveredPcName
+            if (!discovered.isNullOrEmpty()) {
+                binding.tvPcName.text = discovered
+                binding.tvStatus.text = "🟡 PC localizado na rede (${CompanionService.lastDiscoveredPcIp}). Pronto para parear."
+            } else {
+                binding.tvPcName.text = "ConnectToPhone"
+                binding.tvStatus.text = "🟡 Aguardando pareamento na rede local"
+            }
             binding.tvStatus.setTextColor(getColor(R.color.warning))
         }
     }
@@ -162,13 +201,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initiatePairingWithPin(pin: String) {
-        val ip = prefs.pairedPcIp
-        val port = prefs.pairedPcPort
+        val ip = prefs.pairedPcIp ?: CompanionService.lastDiscoveredPcIp
+        val port = prefs.pairedPcPort.takeIf { it > 0 } ?: CompanionService.lastDiscoveredPcPort
         if (!ip.isNullOrEmpty()) {
-            Toast.makeText(this, "Pareando com PIN...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Conectando ao PC ($ip:$port) com PIN...", Toast.LENGTH_SHORT).show()
             CompanionService.instance?.initiatePairing(ip, port, pin)
         } else {
-            Toast.makeText(this, "Escaneie o QR Code primeiro para obter o IP do PC", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Escaneie o QR Code no Linux ou aguarde a detecção automática", Toast.LENGTH_LONG).show()
         }
     }
 

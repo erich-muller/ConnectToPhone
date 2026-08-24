@@ -138,7 +138,10 @@ class ConnectionManager(QObject):
             self._set_state(ConnectionState.LISTENING, f"Porta {self.ws_port}")
             print(f"[Connection] WebSocket server listening on 0.0.0.0:{self.ws_port}")
         except Exception as e:
-            print(f"[Connection] Failed to bind WebSocket server: {e}")
+            print(f"[Connection] ❌ Erro ao iniciar servidor WebSocket na porta {self.ws_port}: {e}")
+            if "Address already in use" in str(e) or getattr(e, 'errno', None) == 98:
+                print(f"[Connection] ⚠️ A porta {self.ws_port} já está em uso! Provavelmente outra instância do ConnectToPhone está em execução em segundo plano.")
+                print(f"[Connection] 💡 Para encerrar a instância anterior, execute: killall -9 python3 (ou feche o ícone na bandeja).")
             self._set_state(ConnectionState.DISCONNECTED, f"Falha ao iniciar: {e}")
             return
 
@@ -155,7 +158,7 @@ class ConnectionManager(QObject):
 
     async def _handle_client_connection(self, websocket: WebSocketServerProtocol):
         client_ip = websocket.remote_address[0]
-        print(f"[Connection] Incoming client from {client_ip}")
+        print(f"[Connection] 📱 Nova conexão de cliente recebida de {client_ip}")
 
         # If another connection is already active, close it or take the newer one
         if self._active_ws is not None and self._active_ws != websocket:
@@ -188,8 +191,10 @@ class ConnectionManager(QObject):
                         token = payload.get("auth_token", "")
                         dev_name = payload.get("device_name", "Android")
                         paired_info = self.config.get_paired_device(source_id)
+                        print(f"[Connection] 🔐 Pedido de autenticação automática (AUTH_CONNECT) de '{dev_name}' ({client_ip}, id={source_id})")
 
                         if paired_info and verify_token(token, paired_info.get("auth_token", "")):
+                            print(f"[Connection] ✅ Token de autenticação válido! Conexão aceita.")
                             authenticated = True
                             device_id = source_id
                             device_name = dev_name
@@ -207,6 +212,7 @@ class ConnectionManager(QObject):
                             self._set_state(ConnectionState.CONNECTED, f"Conectado a {device_name}")
                             self.notification_requested.emit("Celular Conectado", f"{device_name} conectado automaticamente na rede local.")
                         else:
+                            print(f"[Connection] ❌ Token de autenticação inválido ou aparelho não encontrado.")
                             resp = create_message(MessageType.AUTH_RESPONSE, {"status": "rejected", "reason": "invalid_token"}, source_id=self.device_id)
                             await websocket.send(serialize_message(resp))
 
@@ -215,8 +221,10 @@ class ConnectionManager(QObject):
                         pin = payload.get("pin", "")
                         dev_name = payload.get("device_name", "Android")
                         device_id = source_id
+                        print(f"[Connection] 🔑 Pedido de Pareamento (PAIR_REQUEST) de '{dev_name}' ({client_ip}, id={device_id}) com PIN='{pin}' (PIN esperado='{self._current_pairing_pin}')")
 
                         if pin == self._current_pairing_pin:
+                            print(f"[Connection] ✅ PIN correto! Pareamento aceito com sucesso.")
                             new_token = generate_auth_token()
                             self.config.add_paired_device(device_id, dev_name, new_token, client_ip)
                             authenticated = True
@@ -237,6 +245,7 @@ class ConnectionManager(QObject):
                             self.paired_success.emit(device_id, device_name)
                             self.notification_requested.emit("Pareamento Concluído", f"Dispositivo {device_name} pareado com sucesso!")
                         else:
+                            print(f"[Connection] ❌ PIN incorreto! Recebido: '{pin}', Esperado: '{self._current_pairing_pin}'")
                             resp = create_message(
                                 MessageType.PAIR_RESPONSE,
                                 {"status": "rejected", "reason": "invalid_pin"},

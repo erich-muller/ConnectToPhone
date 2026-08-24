@@ -43,6 +43,19 @@ class CompanionService : Service() {
         var instance: CompanionService? = null
             private set
 
+        var onPairingStateChangedListener: ((Boolean) -> Unit)? = null
+        var onConnectionStateChangedListener: ((Boolean, String) -> Unit)? = null
+        var onPcDiscoveredListener: ((String, String, String, Int) -> Unit)? = null
+
+        var lastDiscoveredPcId: String? = null
+            private set
+        var lastDiscoveredPcName: String? = null
+            private set
+        var lastDiscoveredPcIp: String? = null
+            private set
+        var lastDiscoveredPcPort: Int = 42100
+            private set
+
         fun triggerClipboardCheck() {
             instance?.clipboardSyncManager?.onClipboardChanged()
         }
@@ -93,9 +106,10 @@ class CompanionService : Service() {
                 if (isConnected) {
                     reportDeviceStatus()
                 }
+                onConnectionStateChangedListener?.invoke(isConnected, details)
             },
-            onMessageReceived = { type, payload ->
-                handleIncomingMessage(type, payload)
+            onMessageReceived = { type, payload, sourceId ->
+                handleIncomingMessage(type, payload, sourceId)
             }
         )
 
@@ -104,8 +118,14 @@ class CompanionService : Service() {
             deviceId = prefs.deviceId,
             deviceName = prefs.deviceName,
             onPcDiscovered = { pcId, pcName, ip, port ->
+                lastDiscoveredPcId = pcId
+                lastDiscoveredPcName = pcName
+                lastDiscoveredPcIp = ip
+                lastDiscoveredPcPort = port
+                onPcDiscoveredListener?.invoke(pcId, pcName, ip, port)
+
                 // If paired or auto-connect enabled, connect immediately
-                if (prefs.pairedPcId == pcId || !prefs.isPaired) {
+                if (prefs.isPaired && prefs.pairedPcId == pcId && prefs.autoConnect) {
                     if (lanClient?.isConnected == false) {
                         Log.d(TAG, "Connecting to discovered PC $pcName ($ip:$port)...")
                         lanClient?.connect(ip, port, prefs.authToken)
@@ -153,6 +173,7 @@ class CompanionService : Service() {
             override fun onLost(network: Network) {
                 Log.d(TAG, "Wi-Fi lost")
                 updateNotification(getString(R.string.service_searching))
+                onConnectionStateChangedListener?.invoke(false, "Wi-Fi desconectado")
             }
         }
         connectivityManager?.registerNetworkCallback(request, networkCallback!!)
@@ -173,14 +194,11 @@ class CompanionService : Service() {
     }
 
     fun initiatePairing(ip: String, port: Int, pin: String) {
-        lanClient?.connect(ip, port, null)
-        serviceScope.launch {
-            delay(500)
-            lanClient?.sendPairRequest(pin)
-        }
+        Log.d(TAG, "Initiating pairing with $ip:$port using PIN $pin")
+        lanClient?.connectForPairing(ip, port, pin)
     }
 
-    private fun handleIncomingMessage(type: String, payload: JsonObject) {
+    private fun handleIncomingMessage(type: String, payload: JsonObject, sourceId: String) {
         when (type) {
             MessageType.CLIPBOARD_TEXT -> {
                 val text = payload.get("content")?.asString ?: ""
@@ -199,8 +217,17 @@ class CompanionService : Service() {
                 if (status == "accepted") {
                     val token = payload.get("auth_token")?.asString ?: ""
                     val pcName = payload.get("device_name")?.asString ?: "Linux PC"
-                    prefs.savePairing("linux_pc", pcName, prefs.pairedPcIp ?: "", prefs.pairedPcPort, token)
-                    Log.d(TAG, "Pairing successful! Saved credentials.")
+                    val hostIp = lanClient?.currentHostIp ?: prefs.pairedPcIp ?: lastDiscoveredPcIp ?: ""
+                    val hostPort = lanClient?.currentPort ?: prefs.pairedPcPort
+                    val pcId = if (sourceId.isNotEmpty()) sourceId else (lastDiscoveredPcId ?: "linux_pc")
+                    prefs.savePairing(pcId, pcName, hostIp, hostPort, token)
+                    lanClient?.setAuthToken(token)
+                    onPairingStateChangedListener?.invoke(true)
+                    Log.d(TAG, "Pairing successful! Saved credentials for $pcId ($pcName at $hostIp:$hostPort).")
+                } else {
+                    val reason = payload.get("reason")?.asString ?: "unknown"
+                    Log.w(TAG, "Pairing rejected by PC: $reason")
+                    onPairingStateChangedListener?.invoke(false)
                 }
             }
             MessageType.STREAM_START_REQ -> {

@@ -10,40 +10,40 @@
 10
 11    <!-- Network & Local Connectivity -->
 12    <uses-permission android:name="android.permission.INTERNET" />
-12-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:6:5-67
-12-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:6:22-64
+12-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:6:5-67
+12-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:6:22-64
 13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-13-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:7:5-79
-13-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:7:22-76
+13-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:7:5-79
+13-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:7:22-76
 14    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-14-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:8:5-76
-14-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:8:22-73
+14-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:8:5-76
+14-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:8:22-73
 15    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-15-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:9:5-86
-15-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:9:22-83
+15-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:9:5-86
+15-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:9:22-83
 16
 17    <!-- Continuous Background Operation -->
 18    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-18-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:12:5-14:54
-18-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:13:9-61
+18-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:12:5-14:54
+18-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:13:9-61
 19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-19-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:15:5-87
-19-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:15:22-84
+19-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:15:5-87
+19-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:15:22-84
 20    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-20-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:16:5-94
-20-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:16:22-91
+20-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:16:5-94
+20-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:16:22-91
 21    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-21-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:17:5-81
-21-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:17:22-78
+21-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:17:5-81
+21-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:17:22-78
 22    <uses-permission android:name="android.permission.WAKE_LOCK" />
-22-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:18:5-68
-22-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:18:22-65
+22-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:18:5-68
+22-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:18:22-65
 23    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-23-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:19:5-77
-23-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:19:22-74
+23-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:19:5-77
+23-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:19:22-74
 24    <uses-permission android:name="android.permission.VIBRATE" />
-24-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:20:5-66
-24-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:20:22-63
+24-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:20:5-66
+24-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:20:22-63
 25
 26    <permission
 26-->[androidx.core:core:1.12.0] /home/erich/.gradle/caches/transforms-4/d7f65ba514a9d7138ba1763b9cfbf3c7/transformed/core-1.12.0/AndroidManifest.xml:22:5-24:47
@@ -97,132 +97,132 @@
 50-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/erich/.gradle/caches/transforms-4/3fa17bc3a39c450efdc3a69a3a507b80/transformed/jetified-zxing-android-embedded-4.3.0/AndroidManifest.xml:44:9-33
 51
 52    <application
-52-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:22:5-92:19
+52-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:22:5-92:19
 53        android:name="com.connecttophone.ConnectApp"
-53-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:23:9-35
+53-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:23:9-35
 54        android:allowBackup="true"
-54-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:24:9-35
+54-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:24:9-35
 55        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 55-->[androidx.core:core:1.12.0] /home/erich/.gradle/caches/transforms-4/d7f65ba514a9d7138ba1763b9cfbf3c7/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 56        android:debuggable="true"
 57        android:extractNativeLibs="false"
 58        android:icon="@mipmap/ic_launcher"
-58-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:25:9-43
+58-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:25:9-43
 59        android:label="@string/app_name"
-59-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:26:9-41
+59-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:26:9-41
 60        android:roundIcon="@mipmap/ic_launcher_round"
-60-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:27:9-54
+60-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:27:9-54
 61        android:supportsRtl="true"
-61-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:28:9-35
+61-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:28:9-35
 62        android:theme="@style/Theme.ConnectToPhone"
-62-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:29:9-52
+62-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:29:9-52
 63        android:usesCleartextTraffic="true" >
-63-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:30:9-44
+63-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:30:9-44
 64        <activity
-64-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:32:9-40:20
+64-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:32:9-40:20
 65            android:name="com.connecttophone.MainActivity"
-65-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:33:13-41
+65-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:33:13-41
 66            android:exported="true"
-66-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:34:13-36
+66-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:34:13-36
 67            android:windowSoftInputMode="adjustResize" >
-67-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:35:13-55
+67-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:35:13-55
 68            <intent-filter>
-68-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:36:13-39:29
+68-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:36:13-39:29
 69                <action android:name="android.intent.action.MAIN" />
-69-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:37:17-69
-69-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:37:25-66
+69-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:37:17-69
+69-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:37:25-66
 70
 71                <category android:name="android.intent.category.LAUNCHER" />
-71-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:38:17-77
-71-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:38:27-74
+71-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:38:17-77
+71-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:38:27-74
 72            </intent-filter>
 73        </activity>
 74
 75        <!-- Continuous Companion Background Service -->
 76        <service
-76-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:43:9-47:56
+76-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:43:9-47:56
 77            android:name="com.connecttophone.service.CompanionService"
-77-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:44:13-53
+77-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:44:13-53
 78            android:enabled="true"
-78-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:45:13-35
+78-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:45:13-35
 79            android:exported="false"
-79-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:46:13-37
+79-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:46:13-37
 80            android:foregroundServiceType="dataSync" />
-80-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:47:13-53
+80-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:47:13-53
 81
 82        <!-- MediaProjection Screen Streaming Service -->
 83        <service
-83-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:50:9-54:63
+83-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:50:9-54:63
 84            android:name="com.connecttophone.service.ScreenCaptureService"
-84-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:51:13-57
+84-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:51:13-57
 85            android:enabled="true"
-85-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:52:13-35
+85-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:52:13-35
 86            android:exported="false"
-86-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:53:13-37
+86-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:53:13-37
 87            android:foregroundServiceType="mediaProjection" />
-87-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:54:13-60
+87-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:54:13-60
 88
 89        <!-- Accessibility Service for background clipboard observation on Android 10+ -->
 90        <service
-90-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:57:9-68:19
+90-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:57:9-68:19
 91            android:name="com.connecttophone.service.ClipboardAccessibilityService"
-91-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:58:13-66
+91-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:58:13-66
 92            android:exported="true"
-92-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:60:13-36
+92-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:60:13-36
 93            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-93-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:59:13-79
+93-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:59:13-79
 94            <intent-filter>
-94-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:62:13-64:29
+94-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:62:13-64:29
 95                <action android:name="android.accessibilityservice.AccessibilityService" />
-95-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:63:17-92
-95-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:63:25-89
+95-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:63:17-92
+95-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:63:25-89
 96            </intent-filter>
 97
 98            <meta-data
-98-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:65:13-67:72
+98-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:65:13-67:72
 99                android:name="android.accessibilityservice"
-99-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:66:17-60
+99-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:66:17-60
 100                android:resource="@xml/accessibility_service_config" />
-100-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:67:17-69
+100-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:67:17-69
 101        </service>
 102
 103        <!-- Auto-start service on device boot -->
 104        <receiver
-104-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:71:9-79:20
+104-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:71:9-79:20
 105            android:name="com.connecttophone.service.BootReceiver"
-105-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:72:13-49
+105-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:72:13-49
 106            android:enabled="true"
-106-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:73:13-35
+106-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:73:13-35
 107            android:exported="true" >
-107-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:74:13-36
+107-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:74:13-36
 108            <intent-filter>
-108-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:75:13-78:29
+108-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:75:13-78:29
 109                <action android:name="android.intent.action.BOOT_COMPLETED" />
-109-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:76:17-79
-109-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:76:25-76
+109-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:76:17-79
+109-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:76:25-76
 110                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-110-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:77:17-82
-110-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:77:25-79
+110-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:77:17-82
+110-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:77:25-79
 111            </intent-filter>
 112        </receiver>
 113
 114        <!-- FileProvider for image clip sharing -->
 115        <provider
-115-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:82:9-90:20
+115-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:82:9-90:20
 116            android:name="androidx.core.content.FileProvider"
-116-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:83:13-62
+116-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:83:13-62
 117            android:authorities="com.connecttophone.fileprovider"
-117-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:84:13-66
+117-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:84:13-66
 118            android:exported="false"
-118-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:85:13-37
+118-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:85:13-37
 119            android:grantUriPermissions="true" >
-119-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:86:13-47
+119-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:86:13-47
 120            <meta-data
-120-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:87:13-89:54
+120-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:87:13-89:54
 121                android:name="android.support.FILE_PROVIDER_PATHS"
-121-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:88:17-67
+121-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:88:17-67
 122                android:resource="@xml/file_paths" />
-122-->/home/erich/Documentos/ConnectToPhone/android/app/src/main/AndroidManifest.xml:89:17-51
+122-->/home/erich/Documentos/GitHub/ConnectToPhone/android/app/src/main/AndroidManifest.xml:89:17-51
 123        </provider>
 124        <provider
 124-->[androidx.emoji2:emoji2:1.2.0] /home/erich/.gradle/caches/transforms-4/e1fb9fc892c43885899e64ca01640228/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20

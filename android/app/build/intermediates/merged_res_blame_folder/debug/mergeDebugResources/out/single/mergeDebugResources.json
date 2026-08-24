@@ -1,31 +1,27 @@
 [
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/xml_file_paths.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/xml/file_paths.xml"
+        "merged": "com.connecttophone.app-debug-32:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.connecttophone.app-main-34:/drawable/ic_launcher_background.xml"
     },
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/layout_activity_main.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/layout/activity_main.xml"
+        "merged": "com.connecttophone.app-debug-32:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.connecttophone.app-main-34:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_launcher_background.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_launcher_background.xml"
+        "merged": "com.connecttophone.app-debug-32:/xml_accessibility_service_config.xml.flat",
+        "source": "com.connecttophone.app-main-34:/xml/accessibility_service_config.xml"
     },
     {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_launcher_foreground.xml"
-    },
-    {
-        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/xml_accessibility_service_config.xml.flat",
-        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/xml/accessibility_service_config.xml"
+        "merged": "com.connecttophone.app-debug-32:/xml_file_paths.xml.flat",
+        "source": "com.connecttophone.app-main-34:/xml/file_paths.xml"
     },
     {
         "merged": "com.connecttophone.app-debug-32:/layout_activity_main.xml.flat",

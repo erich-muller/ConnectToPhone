@@ -22,7 +22,7 @@ class LanConnectionClient(
     private val deviceId: String,
     private val deviceName: String,
     private val onConnectionStateChanged: (isConnected: Boolean, details: String) -> Unit,
-    private val onMessageReceived: (type: String, payload: JsonObject) -> Unit
+    private val onMessageReceived: (type: String, payload: JsonObject, sourceId: String) -> Unit
 ) {
     private val TAG = "LanConnectionClient"
     private val gson = Gson()
@@ -38,17 +38,31 @@ class LanConnectionClient(
     private var isIntentionalDisconnect = false
     private var reconnectJob: Job? = null
 
-    private var currentHostIp: String? = null
-    private var currentPort: Int = 42100
-    private var currentAuthToken: String? = null
+    var currentHostIp: String? = null
+        private set
+    var currentPort: Int = 42100
+        private set
+    var currentAuthToken: String? = null
+        private set
+    private var pendingPairPin: String? = null
 
     var isConnected: Boolean = false
         private set
 
-    fun connect(hostIp: String, port: Int, authToken: String?) {
+    fun setAuthToken(token: String) {
+        currentAuthToken = token
+        pendingPairPin = null
+    }
+
+    fun connectForPairing(hostIp: String, port: Int, pin: String) {
+        connect(hostIp, port, null, pin)
+    }
+
+    fun connect(hostIp: String, port: Int, authToken: String?, pairPin: String? = null) {
         currentHostIp = hostIp
         currentPort = port
         currentAuthToken = authToken
+        pendingPairPin = pairPin
         isIntentionalDisconnect = false
 
         reconnectJob?.cancel()
@@ -62,16 +76,22 @@ class LanConnectionClient(
 
         activeWebSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "WebSocket connected. Sending auth...")
+                Log.d(TAG, "WebSocket connected.")
                 isConnected = true
 
-                // Send authentication or wait for pair
-                if (!currentAuthToken.isNullOrEmpty()) {
+                // Send pairing request or authentication
+                val pin = pendingPairPin
+                val token = currentAuthToken
+                if (!pin.isNullOrEmpty()) {
+                    Log.d(TAG, "Sending PAIR_REQUEST with PIN: $pin")
+                    sendPairRequest(pin)
+                } else if (!token.isNullOrEmpty()) {
+                    Log.d(TAG, "Sending AUTH_CONNECT token...")
                     val authMsg = BaseMessage(
                         type = MessageType.AUTH_CONNECT,
                         sourceId = deviceId,
                         payload = AuthConnectPayload(
-                            authToken = currentAuthToken!!,
+                            authToken = token,
                             deviceName = deviceName,
                             model = "${Build.MANUFACTURER} ${Build.MODEL}",
                             androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
@@ -86,13 +106,14 @@ class LanConnectionClient(
                 try {
                     val jsonObj = gson.fromJson(text, JsonObject::class.java)
                     val type = jsonObj.get("type")?.asString ?: return
+                    val sourceId = jsonObj.get("source_id")?.asString ?: ""
                     val payload = jsonObj.getAsJsonObject("payload") ?: JsonObject()
 
                     if (type == MessageType.PING) {
                         val pong = BaseMessage(type = MessageType.PONG, sourceId = deviceId, payload = emptyMap<String, String>())
                         webSocket.send(gson.toJson(pong))
                     } else {
-                        onMessageReceived(type, payload)
+                        onMessageReceived(type, payload, sourceId)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error handling message: ${e.message}")
