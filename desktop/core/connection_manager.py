@@ -9,10 +9,6 @@ import threading
 import json
 import time
 from typing import Optional, Dict, Any, Callable, Set
-import websockets
-from websockets.server import WebSocketServerProtocol
-
-from PyQt6.QtCore import QObject, pyqtSignal
 
 from protocol.protocol_spec import (
     MessageType, DEFAULT_WS_PORT, create_message,
@@ -24,6 +20,16 @@ from desktop.core.config_manager import ConfigManager
 from desktop.core.clipboard_service import ClipboardService
 from desktop.core.stream_receiver import StreamReceiver
 from desktop.core.discovery import DiscoveryService, get_local_ip
+from desktop.core.ws_server import serve_ws, WebSocketClientConnection
+from desktop.core.signals import EventSignal
+
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal
+    HAS_PYQT = True
+except ImportError:
+    HAS_PYQT = False
+    QObject = object
+
 
 class ConnectionState:
     DISCONNECTED = "DISCONNECTED"
@@ -33,16 +39,24 @@ class ConnectionState:
     CONNECTED = "CONNECTED"
 
 
-class ConnectionManager(QObject):
-    # Signals for Qt UI
-    state_changed = pyqtSignal(str, str) # (ConnectionState, message/details)
-    device_status_updated = pyqtSignal(dict) # Battery, model, wifi info
-    pairing_requested = pyqtSignal(str, str, str) # (device_id, device_name, pin_provided)
-    paired_success = pyqtSignal(str, str) # (device_id, device_name)
-    notification_requested = pyqtSignal(str, str) # (title, body)
+class ConnectionManager(QObject if HAS_PYQT else object):
+    if HAS_PYQT:
+        state_changed = pyqtSignal(str, str)
+        device_status_updated = pyqtSignal(dict)
+        pairing_requested = pyqtSignal(str, str, str)
+        paired_success = pyqtSignal(str, str)
+        notification_requested = pyqtSignal(str, str)
 
     def __init__(self, config_manager: ConfigManager, clipboard_service: ClipboardService, stream_receiver: StreamReceiver):
-        super().__init__()
+        if HAS_PYQT:
+            super().__init__()
+        else:
+            self.state_changed = EventSignal()
+            self.device_status_updated = EventSignal()
+            self.pairing_requested = EventSignal()
+            self.paired_success = EventSignal()
+            self.notification_requested = EventSignal()
+
         self.config = config_manager
         self.clipboard = clipboard_service
         self.stream = stream_receiver
@@ -51,7 +65,7 @@ class ConnectionManager(QObject):
         self.device_name = self.config.get("device_name")
         self.ws_port = self.config.get("ws_port", DEFAULT_WS_PORT)
 
-        self._active_ws: Optional[WebSocketServerProtocol] = None
+        self._active_ws = None
         self._connected_device_info: Dict[str, Any] = {}
         self._state = ConnectionState.DISCONNECTED
 
@@ -61,9 +75,15 @@ class ConnectionManager(QObject):
         self._server = None
         self._running = False
 
-        # Hook clipboard signals to network sender
-        self.clipboard.local_text_copied.connect(self.send_clipboard_text)
-        self.clipboard.local_image_copied.connect(self.send_clipboard_image)
+        # Hook clipboard listeners
+        self.clipboard.add_listener("local_text", self.send_clipboard_text)
+        self.clipboard.add_listener("local_image", self.send_clipboard_image)
+        if HAS_PYQT:
+            try:
+                self.clipboard.local_text_copied.connect(self.send_clipboard_text)
+                self.clipboard.local_image_copied.connect(self.send_clipboard_image)
+            except Exception:
+                pass
 
         # Discovery service
         self.discovery = DiscoveryService(
@@ -97,18 +117,15 @@ class ConnectionManager(QObject):
         self.state_changed.emit(new_state, details)
 
     def start(self):
-        """Start async server thread and discovery service."""
         if self._running:
             return
         self._running = True
-
         self.discovery.start()
 
         self._thread = threading.Thread(target=self._run_event_loop, daemon=True, name="ConnectToPhoneNet")
         self._thread.start()
 
     def stop(self):
-        """Stop server and disconnect."""
         self._running = False
         self.discovery.stop()
 
@@ -128,39 +145,27 @@ class ConnectionManager(QObject):
 
     async def _main_async_loop(self):
         try:
-            self._server = await websockets.serve(
-                self._handle_client_connection,
-                "0.0.0.0",
-                self.ws_port,
-                ping_interval=None, # We handle custom heartbeat in protocol
-                max_size=50 * 1024 * 1024 # 50MB max for HD image/frame packets
-            )
+            self._server = await serve_ws(self._handle_client_connection, "0.0.0.0", self.ws_port)
             self._set_state(ConnectionState.LISTENING, f"Porta {self.ws_port}")
             print(f"[Connection] WebSocket server listening on 0.0.0.0:{self.ws_port}")
         except Exception as e:
             print(f"[Connection] ❌ Erro ao iniciar servidor WebSocket na porta {self.ws_port}: {e}")
-            if "Address already in use" in str(e) or getattr(e, 'errno', None) == 98:
-                print(f"[Connection] ⚠️ A porta {self.ws_port} já está em uso! Provavelmente outra instância do ConnectToPhone está em execução em segundo plano.")
-                print(f"[Connection] 💡 Para encerrar a instância anterior, execute: killall -9 python3 (ou feche o ícone na bandeja).")
             self._set_state(ConnectionState.DISCONNECTED, f"Falha ao iniciar: {e}")
             return
 
-        # Keep server running and run periodic tasks (like heartbeat check)
         while self._running:
             await asyncio.sleep(2)
             if self._active_ws and self._state == ConnectionState.CONNECTED:
-                # Send ping
                 try:
                     msg = create_message(MessageType.PING, source_id=self.device_id)
                     await self._send_raw_async(serialize_message(msg))
                 except Exception:
                     pass
 
-    async def _handle_client_connection(self, websocket: WebSocketServerProtocol):
-        client_ip = websocket.remote_address[0]
+    async def _handle_client_connection(self, websocket):
+        client_ip = websocket.remote_address[0] if isinstance(websocket.remote_address, tuple) else str(websocket.remote_address)
         print(f"[Connection] 📱 Nova conexão de cliente recebida de {client_ip}")
 
-        # If another connection is already active, close it or take the newer one
         if self._active_ws is not None and self._active_ws != websocket:
             try:
                 await self._active_ws.close()
@@ -175,7 +180,6 @@ class ConnectionManager(QObject):
         try:
             async for raw_message in websocket:
                 if isinstance(raw_message, bytes):
-                    # Handle binary frame stream if sent directly
                     pass
                 else:
                     msg = deserialize_message(raw_message)
@@ -187,11 +191,10 @@ class ConnectionManager(QObject):
                     payload = msg.get("payload", {})
 
                     if msg_type == MessageType.AUTH_CONNECT:
-                        # Auto background reconnection from previously paired phone
                         token = payload.get("auth_token", "")
                         dev_name = payload.get("device_name", "Android")
                         paired_info = self.config.get_paired_device(source_id)
-                        print(f"[Connection] 🔐 Pedido de autenticação automática (AUTH_CONNECT) de '{dev_name}' ({client_ip}, id={source_id})")
+                        print(f"[Connection] 🔐 Pedido de autenticação automática de '{dev_name}' ({client_ip}, id={source_id})")
 
                         if paired_info and verify_token(token, paired_info.get("auth_token", "")):
                             print(f"[Connection] ✅ Token de autenticação válido! Conexão aceita.")
@@ -205,23 +208,21 @@ class ConnectionManager(QObject):
                                 "model": payload.get("model", "Android Device"),
                                 "android_version": payload.get("android_version", "")
                             }
-                            # Update last seen IP
                             self.config.add_paired_device(device_id, device_name, token, client_ip)
                             resp = create_message(MessageType.AUTH_RESPONSE, {"status": "accepted", "device_name": self.device_name}, source_id=self.device_id)
                             await websocket.send(serialize_message(resp))
                             self._set_state(ConnectionState.CONNECTED, f"Conectado a {device_name}")
                             self.notification_requested.emit("Celular Conectado", f"{device_name} conectado automaticamente na rede local.")
                         else:
-                            print(f"[Connection] ❌ Token de autenticação inválido ou aparelho não encontrado.")
+                            print(f"[Connection] ❌ Token de autenticação inválido.")
                             resp = create_message(MessageType.AUTH_RESPONSE, {"status": "rejected", "reason": "invalid_token"}, source_id=self.device_id)
                             await websocket.send(serialize_message(resp))
 
                     elif msg_type == MessageType.PAIR_REQUEST:
-                        # Pairing flow with PIN
                         pin = payload.get("pin", "")
                         dev_name = payload.get("device_name", "Android")
                         device_id = source_id
-                        print(f"[Connection] 🔑 Pedido de Pareamento (PAIR_REQUEST) de '{dev_name}' ({client_ip}, id={device_id}) com PIN='{pin}' (PIN esperado='{self._current_pairing_pin}')")
+                        print(f"[Connection] 🔑 Pedido de Pareamento de '{dev_name}' com PIN='{pin}' (PIN esperado='{self._current_pairing_pin}')")
 
                         if pin == self._current_pairing_pin:
                             print(f"[Connection] ✅ PIN correto! Pareamento aceito com sucesso.")
@@ -256,10 +257,8 @@ class ConnectionManager(QObject):
                     elif authenticated:
                         self._handle_authenticated_message(msg_type, payload, source_id)
 
-        except websockets.exceptions.ConnectionClosed:
-            print(f"[Connection] Connection closed from {client_ip}")
         except Exception as e:
-            print(f"[Connection] Exception in client loop: {e}")
+            print(f"[Connection] Connection disconnected from {client_ip}: {e}")
         finally:
             if self._active_ws == websocket:
                 self._active_ws = None
@@ -269,54 +268,39 @@ class ConnectionManager(QObject):
                 self.notification_requested.emit("Celular Desconectado", f"{device_name} foi desconectado.")
 
     def _handle_authenticated_message(self, msg_type: str, payload: Dict[str, Any], source_id: str):
-        """Process messages from verified companion device."""
         if msg_type == MessageType.PING:
-            # Reply with PONG
             self.send_message(create_message(MessageType.PONG, source_id=self.device_id))
-
         elif msg_type == MessageType.PONG:
-            # Heartbeat acknowledged
             pass
-
         elif msg_type == MessageType.DEVICE_STATUS:
-            # Update battery, wifi info
             self.device_status_updated.emit(payload)
-
         elif msg_type == MessageType.CLIPBOARD_TEXT:
             text = payload.get("content", "")
             if text:
                 self.clipboard.handle_remote_text(text, source_id)
                 self.notification_requested.emit("Texto Copiado do Celular", text[:50] + ("..." if len(text) > 50 else ""))
-
         elif msg_type == MessageType.CLIPBOARD_IMAGE:
             img_b64 = payload.get("data", "")
             if img_b64:
                 self.clipboard.handle_remote_image(img_b64, source_id)
                 self.notification_requested.emit("Imagem Copiada do Celular", "Nova imagem inserida na área de transferência.")
-
         elif msg_type == MessageType.STREAM_START_RESP:
             self.stream.on_stream_start_response(payload)
-
         elif msg_type == MessageType.STREAM_FRAME:
             self.stream.handle_frame_data(payload)
-
         elif msg_type == MessageType.STREAM_STOP:
             self.stream.on_stream_stop(payload.get("reason", "Parado pelo celular"))
 
     def _on_device_discovered_lan(self, msg: Dict[str, Any], sender_ip: str):
-        """Handle discovery beacon from phone on LAN."""
         source_id = msg.get("source_id", "")
         payload = msg.get("payload", {})
         dev_name = payload.get("device_name", "Android Phone")
 
-        # If it's a known paired device and we are not currently connected, initiate connect or notify
         paired = self.config.get_paired_device(source_id)
         if paired and self._state != ConnectionState.CONNECTED:
-            # Phone is on LAN and paired
             print(f"[Discovery] Paired device {dev_name} ({sender_ip}) detected on LAN")
 
     def send_message(self, msg: Dict[str, Any]):
-        """Send message safely across threads."""
         if not self._loop or not self._active_ws or not self._running:
             return
         serialized = serialize_message(msg)
@@ -340,7 +324,6 @@ class ConnectionManager(QObject):
             self.send_message(msg)
 
     def request_start_screen_mirror(self, width: int = 720, height: int = 1280, fps: int = 30, bitrate: int = 3000000):
-        """Request Android to start screen projection stream."""
         if self._state == ConnectionState.CONNECTED:
             msg = create_message(
                 MessageType.STREAM_START_REQ,
@@ -355,7 +338,6 @@ class ConnectionManager(QObject):
             self.send_message(msg)
 
     def request_stop_screen_mirror(self):
-        """Request Android to stop screen projection."""
         if self._state == ConnectionState.CONNECTED:
             msg = create_message(MessageType.STREAM_STOP, source_id=self.device_id)
             self.send_message(msg)

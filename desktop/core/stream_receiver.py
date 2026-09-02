@@ -1,23 +1,39 @@
 """
 Screen Mirroring Stream Receiver for ConnectToPhone Desktop.
 Processes high-speed incoming video frames and manages touch/mouse/keyboard input relays.
+Works with both PyQt6 and GTK4 / Libadwaita.
 """
 
 import base64
 import time
 from typing import Optional, Dict, Any, Tuple
-from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtGui import QImage
 
 from protocol.protocol_spec import MessageType, create_message
+from desktop.core.signals import EventSignal
 
-class StreamReceiver(QObject):
-    frame_received = pyqtSignal(QImage, dict) # (image, stats: {"fps": float, "resolution": str, "frame_num": int})
-    stream_started = pyqtSignal()
-    stream_stopped = pyqtSignal(str) # reason
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal
+    from PyQt6.QtGui import QImage
+    HAS_PYQT = True
+except ImportError:
+    HAS_PYQT = False
+    QObject = object
+
+
+class StreamReceiver(QObject if HAS_PYQT else object):
+    if HAS_PYQT:
+        frame_received = pyqtSignal(object, dict)
+        stream_started = pyqtSignal()
+        stream_stopped = pyqtSignal(str)
 
     def __init__(self, device_id: str):
-        super().__init__()
+        if HAS_PYQT:
+            super().__init__()
+        else:
+            self.frame_received = EventSignal()
+            self.stream_started = EventSignal()
+            self.stream_stopped = EventSignal()
+
         self.device_id = device_id
         self._is_active = False
         self._frame_count = 0
@@ -32,7 +48,6 @@ class StreamReceiver(QObject):
         return self._is_active
 
     def on_stream_start_response(self, payload: Dict[str, Any]):
-        """Called when Android acknowledges screen mirror start."""
         self._is_active = True
         self._frame_count = 0
         self._frames_since_calc = 0
@@ -41,13 +56,11 @@ class StreamReceiver(QObject):
         print("[Stream] Screen stream started from Android")
 
     def on_stream_stop(self, reason: str = "User stopped"):
-        """Called when stream terminates."""
         self._is_active = False
         self.stream_stopped.emit(reason)
         print(f"[Stream] Screen stream stopped: {reason}")
 
     def handle_frame_data(self, payload: Dict[str, Any]):
-        """Decode incoming frame payload into QImage."""
         if not self._is_active:
             self._is_active = True
             self.stream_started.emit()
@@ -58,14 +71,13 @@ class StreamReceiver(QObject):
 
         try:
             raw_bytes = base64.b64decode(data_b64)
-            qimage = QImage.fromData(raw_bytes)
-            if qimage.isNull():
-                return
-
             self._frame_count += 1
             self._frames_since_calc += 1
-            self._current_width = qimage.width()
-            self._current_height = qimage.height()
+
+            w = payload.get("width", self._current_width)
+            h = payload.get("height", self._current_height)
+            self._current_width = w
+            self._current_height = h
 
             now = time.time()
             dt = now - self._last_fps_calc_time
@@ -81,12 +93,20 @@ class StreamReceiver(QObject):
                 "timestamp": payload.get("timestamp", 0)
             }
 
-            self.frame_received.emit(qimage, stats)
+            if HAS_PYQT:
+                try:
+                    qimg = QImage.fromData(raw_bytes)
+                    if not qimg.isNull():
+                        self.frame_received.emit(qimg, stats)
+                        return
+                except Exception:
+                    pass
+
+            self.frame_received.emit(raw_bytes, stats)
         except Exception as e:
             print(f"[Stream] Error processing frame: {e}")
 
     def create_tap_message(self, norm_x: float, norm_y: float, duration_ms: int = 50) -> Dict[str, Any]:
-        """Creates a normalized tap event (0.0 to 1.0)."""
         return create_message(
             MessageType.INPUT_TOUCH,
             {
@@ -99,7 +119,6 @@ class StreamReceiver(QObject):
         )
 
     def create_swipe_message(self, start_x: float, start_y: float, end_x: float, end_y: float, duration_ms: int = 200) -> Dict[str, Any]:
-        """Creates a normalized swipe/drag event."""
         return create_message(
             MessageType.INPUT_TOUCH,
             {
@@ -114,7 +133,6 @@ class StreamReceiver(QObject):
         )
 
     def create_touch_message(self, action: str, normalized_x: float, normalized_y: float) -> Dict[str, Any]:
-        """Creates a generic touch event."""
         return create_message(
             MessageType.INPUT_TOUCH,
             {
@@ -126,9 +144,6 @@ class StreamReceiver(QObject):
         )
 
     def create_key_message(self, key_code: str) -> Dict[str, Any]:
-        """
-        Creates a key event message (e.g. 'BACK', 'HOME', 'RECENTS', 'ENTER').
-        """
         return create_message(
             MessageType.INPUT_KEY,
             {"key": key_code},

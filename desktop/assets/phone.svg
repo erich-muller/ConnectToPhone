@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="phoneBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3584E4"/>
+      <stop offset="100%" stop-color="#1C71D8"/>
+    </linearGradient>
+    <linearGradient id="phoneScreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#241F31"/>
+      <stop offset="100%" stop-color="#18181B"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Body -->
+  <rect x="28" y="10" width="72" height="108" rx="16" ry="16" fill="url(#phoneBody)" filter="url(#shadow)" stroke="#62A0EA" stroke-width="2"/>
+  
+  <!-- Inner Bezel -->
+  <rect x="32" y="14" width="64" height="100" rx="12" ry="12" fill="#1E1E1E"/>
+  
+  <!-- Screen Area -->
+  <rect x="34" y="18" width="60" height="92" rx="10" ry="10" fill="url(#phoneScreen)"/>
+  
+  <!-- Camera punchhole -->
+  <circle cx="64" cy="24" r="2.5" fill="#000000"/>
+  <circle cx="64" cy="24" r="1" fill="#3584E4" opacity="0.6"/>
+  
+  <!-- Home Indicator Bar -->
+  <rect x="52" y="104" width="24" height="2.5" rx="1.25" ry="1.25" fill="#77767B"/>
+  
+  <!-- Screen Content: Waves / Sync Pulse -->
+  <path d="M50 56 Q64 46 78 56" fill="none" stroke="#3584E4" stroke-width="3" stroke-linecap="round"/>
+  <path d="M44 64 Q64 50 84 64" fill="none" stroke="#62A0EA" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="64" cy="74" r="4" fill="#3584E4"/>
+</svg>
+

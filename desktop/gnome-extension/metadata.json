@@ -1,0 +1,16 @@
+{
+  "uuid": "connect-to-phone@erich.github.com",
+  "name": "ConnectToPhone",
+  "description": "Integração rápida do ConnectToPhone no menu Quick Settings do GNOME (energia, som, conexão)",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "url": "https://github.com/erich-muller/ConnectToPhone",
+  "version": 1
+}
+
