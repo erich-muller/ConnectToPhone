@@ -296,6 +296,10 @@ export default class ConnectToPhoneExtension extends Extension {
                 if (selection) {
                     this._selectionId = selection.connect('owner-changed', (sel, selType, source) => {
                         if (selType === Meta.SelectionType.SELECTION_CLIPBOARD) {
+                            // 1. Tell daemon to check clipboard (handles images, screenshots, and text)
+                            this.callDaemonMethod('TriggerClipboardCheck');
+
+                            // 2. Also pass text directly if available
                             St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (cb, text) => {
                                 if (text && text.length > 0) {
                                     this.callDaemonMethod('ReportClipboardText', new GLib.Variant('(s)', [text]));
@@ -413,14 +417,18 @@ export default class ConnectToPhoneExtension extends Extension {
                         proxy.call_finish(res);
                     } catch (e) {
                         console.log(`[ConnectToPhone] Error calling ${methodName}: ${e}`);
-                        if (methodName !== 'ReportClipboardText' && methodName !== 'ReportClipboardImage') {
+                        const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck');
+                        if (!isPassive) {
                             this._launchAppProcess(methodName);
                         }
                     }
                 }
             );
-        } else if (methodName !== 'ReportClipboardText' && methodName !== 'ReportClipboardImage') {
-            this._launchAppProcess(methodName);
+        } else {
+            const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck');
+            if (!isPassive) {
+                this._launchAppProcess(methodName);
+            }
         }
     }
 

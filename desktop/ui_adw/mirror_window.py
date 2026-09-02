@@ -16,9 +16,9 @@ gi.require_version('GLib', '2.0')
 from gi.repository import Gtk, Adw, Gdk, GLib
 
 
-class MirrorWindowAdw(Adw.Window):
-    def __init__(self, connection_manager, parent=None):
-        super().__init__()
+class MirrorWindowAdw(Adw.ApplicationWindow):
+    def __init__(self, app: Adw.Application, connection_manager):
+        super().__init__(application=app)
         self.conn = connection_manager
         self._current_texture: Optional[Gdk.Texture] = None
         self._current_aspect = 9.0 / 16.0
@@ -28,12 +28,9 @@ class MirrorWindowAdw(Adw.Window):
         self._press_y = 0.0
         self._press_time = 0.0
 
-        self.set_title("Espelhamento de Tela - ConnectToPhone")
+        self.set_title("Espelhamento de Tela — ConnectToPhone")
         self.set_default_size(400, 750)
         self.set_size_request(280, 480)
-
-        if parent:
-            self.set_transient_for(parent)
 
         self._setup_ui()
 
@@ -48,9 +45,19 @@ class MirrorWindowAdw(Adw.Window):
         header_bar.set_decoration_layout(":minimize,maximize,close")
         toolbar_view.add_top_bar(header_bar)
 
+        # Title Box with icon and label
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        title_box.set_valign(Gtk.Align.CENTER)
+
+        mirror_icon = Gtk.Image.new_from_icon_name("video-display-symbolic")
+        mirror_icon.add_css_class("accent")
+        title_box.append(mirror_icon)
+
         self.title_label = Gtk.Label(label="Espelhamento de Tela")
         self.title_label.add_css_class("heading")
-        header_bar.set_title_widget(self.title_label)
+        title_box.append(self.title_label)
+
+        header_bar.set_title_widget(title_box)
 
         # Stats Badge
         self.stats_badge = Gtk.Label(label="Aguardando...")
@@ -108,7 +115,8 @@ class MirrorWindowAdw(Adw.Window):
         self.connect("close-request", self._on_close_requested)
 
     def prepare_for_stream(self, device_name: str = "Celular"):
-        self.title_label.set_label(device_name)
+        self.set_title(f"Espelhamento de Tela — {device_name}")
+        self.title_label.set_label(f"Espelhando: {device_name}")
         self.placeholder_label.set_label("Aguardando transmissão de tela do celular...\n(Autorize a captura no aparelho se solicitado)")
         self.placeholder_label.set_visible(True)
         self.stats_badge.set_label("Aguardando...")

@@ -163,6 +163,8 @@ def main():
         )
 
         def on_startup(app):
+            GLib.set_prgname("org.connecttophone.Desktop")
+            GLib.set_application_name("ConnectToPhone")
             # Only primary instance runs startup
             app_helper.initialize_core_services(app_instance=app)
 

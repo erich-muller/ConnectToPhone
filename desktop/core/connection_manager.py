@@ -186,6 +186,7 @@ class ConnectionManager:
                     msg_type = msg.get("type")
                     source_id = msg.get("source_id", "")
                     payload = msg.get("payload", {})
+                    print(f"[Connection] 📩 Raw msg_type: {msg_type}, auth={authenticated}")
 
                     if msg_type == MessageType.AUTH_CONNECT:
                         token = payload.get("auth_token", "")
@@ -276,6 +277,7 @@ class ConnectionManager:
         elif msg_type == MessageType.PONG:
             pass
         elif msg_type == MessageType.DEVICE_STATUS:
+            print(f"[Connection] 🔋 Received DEVICE_STATUS: {payload}")
             self.device_status_updated.emit(payload)
         elif msg_type == MessageType.CLIPBOARD_TEXT:
             text = payload.get("content", "")
@@ -327,6 +329,7 @@ class ConnectionManager:
             self.send_message(msg)
 
     def request_start_screen_mirror(self, width: int = 720, height: int = 1280, fps: int = 30, bitrate: int = 3000000):
+        print(f"[Mirror] 📡 request_start_screen_mirror called! State={self._state}")
         if self._state == ConnectionState.CONNECTED:
             msg = create_message(
                 MessageType.STREAM_START_REQ,

@@ -26,37 +26,56 @@ if command -v gnome-extensions >/dev/null 2>&1; then
     fi
 fi
 
-# 3. Create desktop entry in ~/.local/share/applications
+# 3. Install scalable application icons into icon theme
+ICONS_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
+mkdir -p "${ICONS_DIR}"
+cp -f "${SCRIPT_DIR}/assets/phone.svg" "${ICONS_DIR}/org.connecttophone.Desktop.svg"
+cp -f "${SCRIPT_DIR}/assets/phone_mirror.svg" "${ICONS_DIR}/org.connecttophone.Mirror.svg"
+echo "✅ Ícones instalados em: ${ICONS_DIR}"
+
+# 4. Create desktop entry in ~/.local/share/applications
 mkdir -p "${APPS_DIR}"
 cat <<EOF > "${APPS_DIR}/org.connecttophone.Desktop.desktop"
 [Desktop Entry]
 Name=ConnectToPhone
 Comment=Vincular e sincronizar celular Android no Linux GNOME
 Exec=python3 ${SCRIPT_DIR}/main.py
-Icon=${SCRIPT_DIR}/assets/phone.svg
+Icon=org.connecttophone.Desktop
 Terminal=false
 Type=Application
 Categories=Utility;Network;GNOME;GTK;
 StartupNotify=true
 StartupWMClass=org.connecttophone.Desktop
+Actions=Mirror;
+
+[Desktop Action Mirror]
+Name=Espelhar Tela do Celular
+Exec=python3 ${SCRIPT_DIR}/main.py --mirror
 EOF
 chmod +x "${APPS_DIR}/org.connecttophone.Desktop.desktop"
 echo "✅ Desktop Entry criado em: ${APPS_DIR}/org.connecttophone.Desktop.desktop"
 
-# 4. Create Autostart Entry in ~/.config/autostart (runs in background on user login)
+# 5. Create Autostart Entry in ~/.config/autostart (runs in background on user login)
 mkdir -p "${AUTOSTART_DIR}"
 cat <<EOF > "${AUTOSTART_DIR}/org.connecttophone.Desktop.desktop"
 [Desktop Entry]
 Name=ConnectToPhone Daemon
 Comment=Serviço em segundo plano do ConnectToPhone
 Exec=python3 ${SCRIPT_DIR}/main.py --daemon
-Icon=${SCRIPT_DIR}/assets/phone.svg
+Icon=org.connecttophone.Desktop
 Terminal=false
 Type=Application
 Categories=Utility;Network;
 X-GNOME-Autostart-enabled=true
 EOF
 echo "✅ Inicialização automática em segundo plano configurada em: ${AUTOSTART_DIR}/org.connecttophone.Desktop.desktop"
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" 2>/dev/null || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${APPS_DIR}" 2>/dev/null || true
+fi
 
 # 5. Enable extension in GSettings
 if command -v gsettings >/dev/null 2>&1; then

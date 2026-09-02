@@ -21,7 +21,7 @@ try:
     import gi
     gi.require_version('Gtk', '4.0')
     gi.require_version('Gdk', '4.0')
-    from gi.repository import Gtk, Gdk, GLib
+    from gi.repository import Gtk, Gdk, GLib, Gio
     HAS_GTK = True
 except Exception:
     HAS_GTK = False
@@ -103,8 +103,8 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 pass
 
     def initialize(self):
-        """Hook into Wayland background socket watcher and native GDK clipboard."""
-        # 1. Background Wayland Watcher (Runs 24/7 in background with zero window focus required)
+        """Hook into Wayland background socket watcher, screenshot folder watcher, and native GDK clipboard."""
+        # 1. Background Wayland Watcher
         if self._wl_paste_bin:
             self._start_wayland_watcher()
 
@@ -118,6 +118,11 @@ class ClipboardService(QObject if HAS_PYQT else object):
             except Exception:
                 pass
 
+            # Monitor GNOME Screenshot directories directly with inotify (Gio.FileMonitor)
+            self._setup_screenshot_folder_watcher()
+            # Periodic 2s fallback check
+            GLib.timeout_add_seconds(2, self._periodic_clipboard_check)
+
         # 3. Qt listener if active
         if HAS_PYQT:
             app = QApplication.instance()
@@ -126,11 +131,83 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 if self._clipboard:
                     self._clipboard.dataChanged.connect(self._on_qt_clipboard_changed)
 
-        print("[Clipboard] Clipboard service initialized (Background Wayland Watcher Active)")
+        print("[Clipboard] Clipboard service initialized (Background Watcher & Screenshot Folder Monitor Active)")
+
+    def _setup_screenshot_folder_watcher(self):
+        """Monitor GNOME screenshot directories with inotify (Gio.FileMonitor) for instant sync."""
+        if not HAS_GTK:
+            return
+        screenshot_dirs = [
+            os.path.expanduser("~/Imagens/Capturas de tela"),
+            os.path.expanduser("~/Pictures/Screenshots"),
+            os.path.expanduser("~/Imagens"),
+            os.path.expanduser("~/Pictures")
+        ]
+        self._screenshot_monitors = []
+        for s_dir in screenshot_dirs:
+            if os.path.isdir(s_dir):
+                try:
+                    gfile = Gio.File.new_for_path(s_dir)
+                    mon = gfile.monitor_directory(Gio.FileMonitorFlags.NONE, None)
+                    mon.connect("changed", self._on_screenshot_file_changed)
+                    self._screenshot_monitors.append(mon)
+                    print(f"[Clipboard] Inotify monitoring screenshot directory: {s_dir}")
+                except Exception as e:
+                    print(f"[Clipboard] Could not monitor {s_dir}: {e}")
+
+    def _on_screenshot_file_changed(self, monitor, gfile, other_file, event_type):
+        if not self._enabled or not self._sync_images:
+            return
+        if event_type in (Gio.FileMonitorEvent.CREATED, Gio.FileMonitorEvent.CHANGES_DONE_HINT):
+            filepath = gfile.get_path()
+            if filepath and filepath.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                GLib.timeout_add(150, self._process_screenshot_file, filepath)
+
+    def _process_screenshot_file(self, filepath: str):
+        if not os.path.isfile(filepath):
+            return False
+        try:
+            with open(filepath, "rb") as f:
+                raw_bytes = f.read()
+            if len(raw_bytes) < 64:
+                return False
+            img_hash = self._compute_hash(raw_bytes)
+            if img_hash == self._last_content_hash:
+                return False
+
+            self._last_content_hash = img_hash
+            b64_str = base64.b64encode(raw_bytes).decode('utf-8')
+            preview = f"Captura de tela ({os.path.basename(filepath)}, {len(raw_bytes)//1024} KB)"
+            item = ClipboardItem(
+                item_type="image",
+                content=b64_str,
+                source="local",
+                timestamp=time.time(),
+                preview=preview
+            )
+            self._add_to_history(item)
+            self._emit_local_image(b64_str)
+            print(f"[Clipboard] (Screenshot File Detected) Synced {preview}")
+        except Exception as e:
+            print(f"[Clipboard] Error reading screenshot file: {e}")
+        return False
+
+    def _periodic_clipboard_check(self):
+        if self._enabled:
+            self._check_and_process_system_clipboard()
+        return GLib.SOURCE_CONTINUE
 
     def shutdown(self):
         """Clean shutdown."""
         self._watcher_running = False
+        if hasattr(self, "_watcher_procs"):
+            for p in self._watcher_procs:
+                try:
+                    p.terminate()
+                    p.kill()
+                except Exception:
+                    pass
+            self._watcher_procs = []
         if self._watcher_proc:
             try:
                 self._watcher_proc.terminate()
@@ -239,6 +316,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
         if self._watcher_running or not self._wl_paste_bin:
             return
         self._watcher_running = True
+        self._watcher_procs = []
 
         if os.path.exists(self._sock_path):
             try:
@@ -259,14 +337,22 @@ class ClipboardService(QObject if HAS_PYQT else object):
     def _wayland_socket_listen_loop(self):
         while self._watcher_running:
             try:
-                proc = subprocess.Popen(
-                    [self._wl_paste_bin, "--watch", sys.executable, NOTIFIER_SCRIPT],
+                procs = []
+                # Watcher 1: Text selections
+                procs.append(subprocess.Popen(
+                    [self._wl_paste_bin, "--type", "text/plain", "--watch", sys.executable, NOTIFIER_SCRIPT],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
-                )
-                self._watcher_proc = proc
+                ))
+                # Watcher 2: Image selections & Screenshots (Print)
+                procs.append(subprocess.Popen(
+                    [self._wl_paste_bin, "--type", "image/png", "--watch", sys.executable, NOTIFIER_SCRIPT],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                ))
+                self._watcher_procs = procs
 
-                while self._watcher_running and proc.poll() is None:
+                while self._watcher_running and any(p.poll() is None for p in procs):
                     if self._server_sock:
                         try:
                             data, _ = self._server_sock.recvfrom(64)
@@ -279,8 +365,12 @@ class ClipboardService(QObject if HAS_PYQT else object):
                     else:
                         time.sleep(0.5)
 
-                if proc.poll() is not None:
-                    time.sleep(1.0)
+                for p in procs:
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
+                time.sleep(1.0)
             except Exception as e:
                 time.sleep(1.5)
 
@@ -288,42 +378,29 @@ class ClipboardService(QObject if HAS_PYQT else object):
         if not self._enabled or time.time() < self._ignore_until or not self._wl_paste_bin:
             return
 
-        # 1. Check text
+        offered_types = ""
         try:
-            res = subprocess.run(
-                [self._wl_paste_bin, "-n", "--type", "text/plain"],
+            res_types = subprocess.run(
+                [self._wl_paste_bin, "--list-types"],
                 capture_output=True,
-                timeout=0.6
+                text=True,
+                timeout=0.5
             )
-            if res.returncode == 0 and res.stdout:
-                text_bytes = res.stdout
-                text_hash = self._compute_hash(text_bytes)
-                if text_hash != self._last_content_hash:
-                    self._last_content_hash = text_hash
-                    text = text_bytes.decode('utf-8', errors='replace')
-                    if text:
-                        preview = text[:60] + ("..." if len(text) > 60 else "")
-                        item = ClipboardItem(
-                            item_type="text",
-                            content=text,
-                            source="local",
-                            timestamp=time.time(),
-                            preview=preview
-                        )
-                        self._add_to_history(item)
-                        self._emit_local_text(text)
-                        print(f"[Clipboard] (Background) Local text copied: {preview!r}")
-                        return
+            if res_types.returncode == 0 and res_types.stdout:
+                offered_types = res_types.stdout
         except Exception:
             pass
 
-        # 2. Check image
-        if self._sync_images:
+        has_image = ("image/png" in offered_types or "image/jpeg" in offered_types or "image/bmp" in offered_types)
+        has_text = ("text/plain" in offered_types or "UTF8_STRING" in offered_types or "STRING" in offered_types or "text/html" in offered_types)
+
+        # 1. Prioritize image if an image format (e.g. screenshot print) is offered!
+        if has_image and self._sync_images:
             try:
                 res_img = subprocess.run(
                     [self._wl_paste_bin, "--type", "image/png"],
                     capture_output=True,
-                    timeout=0.8
+                    timeout=1.2
                 )
                 if res_img.returncode == 0 and res_img.stdout and len(res_img.stdout) > 64:
                     img_bytes = res_img.stdout
@@ -331,7 +408,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
                     if img_hash != self._last_content_hash:
                         self._last_content_hash = img_hash
                         b64_str = base64.b64encode(img_bytes).decode('utf-8')
-                        preview = f"Imagem PNG ({len(img_bytes)//1024} KB)"
+                        preview = f"Captura/Imagem ({len(img_bytes)//1024} KB)"
                         item = ClipboardItem(
                             item_type="image",
                             content=b64_str,
@@ -341,8 +418,38 @@ class ClipboardService(QObject if HAS_PYQT else object):
                         )
                         self._add_to_history(item)
                         self._emit_local_image(b64_str)
-                        print(f"[Clipboard] (Background) Local image copied ({len(img_bytes)} bytes)")
+                        print(f"[Clipboard] (Background) Screenshot/Image captured ({len(img_bytes)} bytes)")
                         return
+            except Exception as e:
+                print(f"[Clipboard] Error reading image: {e}")
+
+        # 2. Check text
+        if has_text or not has_image:
+            try:
+                res = subprocess.run(
+                    [self._wl_paste_bin, "-n", "--type", "text/plain"],
+                    capture_output=True,
+                    timeout=0.6
+                )
+                if res.returncode == 0 and res.stdout:
+                    text_bytes = res.stdout
+                    text_hash = self._compute_hash(text_bytes)
+                    if text_hash != self._last_content_hash:
+                        self._last_content_hash = text_hash
+                        text = text_bytes.decode('utf-8', errors='replace')
+                        if text:
+                            preview = text[:60] + ("..." if len(text) > 60 else "")
+                            item = ClipboardItem(
+                                item_type="text",
+                                content=text,
+                                source="local",
+                                timestamp=time.time(),
+                                preview=preview
+                            )
+                            self._add_to_history(item)
+                            self._emit_local_text(text)
+                            print(f"[Clipboard] (Background) Local text copied: {preview!r}")
+                            return
             except Exception:
                 pass
 
@@ -472,7 +579,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
         # 1. Apply to Wayland system clipboard using wl-copy
         if self._wl_copy_bin:
             try:
-                subprocess.run([self._wl_copy_bin, text], input=text_bytes, check=False)
+                subprocess.run([self._wl_copy_bin], input=text_bytes, timeout=0.5, check=False)
             except Exception as e:
                 print(f"[Clipboard] wl-copy error: {e}")
 
@@ -528,7 +635,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
 
             if self._wl_copy_bin:
                 try:
-                    subprocess.run([self._wl_copy_bin, "--type", "image/png"], input=raw_bytes, check=False)
+                    subprocess.run([self._wl_copy_bin, "--type", "image/png"], input=raw_bytes, timeout=0.5, check=False)
                 except Exception as e:
                     print(f"[Clipboard] wl-copy image error: {e}")
 

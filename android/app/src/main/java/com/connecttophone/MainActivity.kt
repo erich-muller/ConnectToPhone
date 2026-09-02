@@ -8,6 +8,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("MainActivity", "screenCaptureLauncher result: code=${result.resultCode}, hasData=${result.data != null}")
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             CompanionService.sendStreamStartResponse("accepted")
             startScreenCaptureService(result.resultCode, result.data!!)

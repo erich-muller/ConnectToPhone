@@ -1,19 +1,23 @@
 [
     {
-        "merged": "com.connecttophone.app-debug-32:/drawable_ic_launcher_background.xml.flat",
-        "source": "com.connecttophone.app-main-34:/drawable/ic_launcher_background.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_qr_code_scanner.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_qr_code_scanner.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "com.connecttophone.app-main-34:/drawable/ic_launcher_foreground.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/layout_activity_main.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/layout/activity_main.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/drawable_ic_image.xml.flat",
-        "source": "com.connecttophone.app-main-34:/drawable/ic_image.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_bg_badge_adw.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/bg_badge_adw.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_launcher_background.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_launcher_background.xml"
     },
     {
         "merged": "com.connecttophone.app-debug-32:/drawable_ic_wifi_refresh.xml.flat",
@@ -24,12 +28,12 @@
         "source": "com.connecttophone.app-main-34:/drawable/ic_desktop_mac.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/layout_activity_main.xml.flat",
-        "source": "com.connecttophone.app-main-34:/layout/activity_main.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_content_copy.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_content_copy.xml"
     },
     {
         "merged": "com.connecttophone.app-debug-32:/drawable_ic_qr_code_scanner.xml.flat",
@@ -44,12 +48,44 @@
         "source": "com.connecttophone.app-main-34:/drawable/ic_content_copy.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/xml_accessibility_service_config.xml.flat",
-        "source": "com.connecttophone.app-main-34:/xml/accessibility_service_config.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_settings_gesture.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_settings_gesture.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/xml_file_paths.xml.flat",
-        "source": "com.connecttophone.app-main-34:/xml/file_paths.xml"
+        "merged": "com.connecttophone.app-debug-32:/drawable_ic_settings_gesture.xml.flat",
+        "source": "com.connecttophone.app-main-34:/drawable/ic_settings_gesture.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_dialpad.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_dialpad.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/xml_file_paths.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/xml/file_paths.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_status_dot.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_status_dot.xml"
+    },
+    {
+        "merged": "com.connecttophone.app-debug-32:/drawable_ic_image.xml.flat",
+        "source": "com.connecttophone.app-main-34:/drawable/ic_image.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_desktop_mac.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_desktop_mac.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/xml_accessibility_service_config.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/xml/accessibility_service_config.xml"
+    },
+    {
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_wifi_refresh.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_wifi_refresh.xml"
     },
     {
         "merged": "com.connecttophone.app-debug-32:/drawable_bg_badge_adw.xml.flat",
@@ -60,7 +96,7 @@
         "source": "com.connecttophone.app-main-34:/drawable/ic_dialpad.xml"
     },
     {
-        "merged": "com.connecttophone.app-debug-32:/drawable_ic_settings_gesture.xml.flat",
-        "source": "com.connecttophone.app-main-34:/drawable/ic_settings_gesture.xml"
+        "merged": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-debug-32:/drawable_ic_image.xml.flat",
+        "source": "/home/erich/.gradle/daemon/8.6/com.connecttophone.app-main-34:/drawable/ic_image.xml"
     }
 ]

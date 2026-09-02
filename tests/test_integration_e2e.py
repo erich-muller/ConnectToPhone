@@ -201,7 +201,7 @@ class TestConnectToPhoneE2E(unittest.TestCase):
                 source_id="android-test-uuid"
             )
             await client.send(serialize_message(text_msg))
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.3)
 
             # 4. Send Image Clipboard from Phone to Linux
             img_msg = create_message(
@@ -210,7 +210,7 @@ class TestConnectToPhoneE2E(unittest.TestCase):
                 source_id="android-test-uuid"
             )
             await client.send(serialize_message(img_msg))
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.7)
 
             # 5. Send Screen Mirror Frame from Phone to Linux
             frame_msg = create_message(
@@ -219,7 +219,7 @@ class TestConnectToPhoneE2E(unittest.TestCase):
                 source_id="android-test-uuid"
             )
             await client.send(serialize_message(frame_msg))
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.4)
 
             await client.close()
 

@@ -386,7 +386,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
 
     def _open_screen_mirror(self, button=None):
         if self.mirror_window is None:
-            self.mirror_window = MirrorWindowAdw(self.conn, parent=self)
+            self.mirror_window = MirrorWindowAdw(app=self.app, connection_manager=self.conn)
             self.conn.stream.frame_received.connect(self._queue_frame_for_render)
             self.conn.stream.stream_stopped.connect(
                 lambda reason: GLib.idle_add(self._on_stream_stopped, reason)

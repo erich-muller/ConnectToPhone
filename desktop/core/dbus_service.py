@@ -30,6 +30,7 @@ DBUS_INTROSPECTION_XML = """
     <method name="OpenPairDialog"/>
     <method name="ReconnectDevice"/>
     <method name="TriggerDiscovery"/>
+    <method name="TriggerClipboardCheck"/>
     <method name="ToggleClipboardSync">
       <arg type="b" name="enabled" direction="in"/>
     </method>
@@ -175,6 +176,7 @@ class DBusService:
         self.emit_status_changed()
 
     def _on_device_status(self, status: Dict[str, Any]):
+        print(f"[DBus] 🔋 _on_device_status called with: {status}")
         self._battery_level = status.get("battery_level", self._battery_level)
         self._is_charging = status.get("is_charging", self._is_charging)
         self.emit_status_changed()
@@ -211,6 +213,10 @@ class DBusService:
 
             elif method_name in ("ReconnectDevice", "TriggerDiscovery"):
                 self.conn.trigger_discovery()
+                invocation.return_value(None)
+
+            elif method_name == "TriggerClipboardCheck":
+                GLib.idle_add(self.clipboard._check_and_process_system_clipboard)
                 invocation.return_value(None)
 
             elif method_name == "ToggleClipboardSync":

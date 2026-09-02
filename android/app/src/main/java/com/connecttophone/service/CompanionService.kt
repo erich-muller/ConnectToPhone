@@ -99,6 +99,7 @@ class CompanionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        instance = this
         // Ensure connection is active
         tryConnectOrDiscover()
         return START_STICKY
@@ -253,7 +254,7 @@ class CompanionService : Service() {
                 }
             }
             MessageType.STREAM_START_REQ -> {
-                // Screen mirror requested by PC. Request permission in UI or forward intent
+                Log.d(TAG, "Screen mirror requested by PC! Launching MainActivity for permission...")
                 val intent = Intent(this, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     putExtra("ACTION_START_SCREEN_CAPTURE", true)
@@ -292,28 +293,75 @@ class CompanionService : Service() {
     }
 
     private fun startPeriodicStatusReporting() {
+        statusUpdateJob?.cancel()
         statusUpdateJob = serviceScope.launch {
             while (isActive) {
-                if (lanClient?.isConnected == true) {
-                    reportDeviceStatus()
+                try {
+                    if (lanClient?.isConnected == true) {
+                        reportDeviceStatus()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in status reporting loop: ${e.message}")
                 }
-                delay(15000) // Every 15s
+                delay(10000) // Every 10s
             }
         }
     }
 
     private fun reportDeviceStatus() {
-        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        val batteryPct = if (level >= 0 && scale > 0) (level * 100 / scale) else 50
-        val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        try {
+            var batteryPct = -1
+            var isCharging = false
 
-        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val ssid = wifi?.connectionInfo?.ssid?.replace("\"", "") ?: "Wi-Fi"
+            val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+            if (bm != null) {
+                batteryPct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    isCharging = bm.isCharging
+                } else {
+                    val status = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_STATUS)
+                    isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                }
+            }
 
-        lanClient?.sendDeviceStatus(batteryPct, isCharging, ssid)
+            if (batteryPct < 0 || batteryPct > 100) {
+                try {
+                    val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                    val batteryIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        registerReceiver(null, filter, Context.RECEIVER_NOT_EXPORTED)
+                    } else {
+                        registerReceiver(null, filter)
+                    }
+                    val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                    val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                    if (level >= 0 && scale > 0) {
+                        batteryPct = level * 100 / scale
+                    }
+                    val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+                    isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                } catch (e: Exception) {
+                    Log.w(TAG, "BatteryIntent fallback failed: ${e.message}")
+                }
+            }
+
+            if (batteryPct < 0) batteryPct = 50
+
+            var ssid = "Wi-Fi"
+            try {
+                val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                val rawSsid = wifi?.connectionInfo?.ssid?.replace("\"", "")
+                if (!rawSsid.isNullOrEmpty() && rawSsid != "<unknown ssid>") {
+                    ssid = rawSsid
+                }
+            } catch (e: Exception) {
+                // Ignore WiFi SSID error
+            }
+
+            Log.d(TAG, "Reporting device status: battery=$batteryPct%, charging=$isCharging, ssid=$ssid")
+            lanClient?.sendDeviceStatus(batteryPct, isCharging, ssid)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reporting device status: ${e.message}")
+        }
     }
 
     private fun buildNotification(statusText: String): Notification {

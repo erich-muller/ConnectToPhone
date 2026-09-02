@@ -59,6 +59,11 @@ class LanConnectionClient(
     }
 
     fun connect(hostIp: String, port: Int, authToken: String?, pairPin: String? = null) {
+        if (isConnected && currentHostIp == hostIp && currentPort == port && activeWebSocket != null) {
+            Log.d(TAG, "Already connected to $hostIp:$port, ignoring redundant connect call")
+            return
+        }
+
         currentHostIp = hostIp
         currentPort = port
         currentAuthToken = authToken
@@ -127,12 +132,16 @@ class LanConnectionClient(
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket closed: $reason")
-                handleDisconnect("Desconectado")
+                if (webSocket === activeWebSocket) {
+                    handleDisconnect("Desconectado", webSocket)
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket failure: ${t.message}")
-                handleDisconnect("Falha na conexão: ${t.message}")
+                if (webSocket === activeWebSocket) {
+                    handleDisconnect("Falha na conexão: ${t.message}", webSocket)
+                }
             }
         })
     }
@@ -171,17 +180,21 @@ class LanConnectionClient(
     }
 
     fun sendDeviceStatus(batteryLevel: Int, isCharging: Boolean, wifiSsid: String) {
-        if (!isConnected) return
+        if (!isConnected || activeWebSocket == null) {
+            Log.d(TAG, "Skipping sendDeviceStatus: isConnected=$isConnected, ws=${activeWebSocket != null}")
+            return
+        }
         val msg = BaseMessage(
             type = MessageType.DEVICE_STATUS,
             sourceId = deviceId,
             payload = DeviceStatusPayload(batteryLevel, isCharging, wifiSsid)
         )
-        sendJson(gson.toJson(msg))
+        val ok = sendJson(gson.toJson(msg))
+        Log.d(TAG, "Sent DEVICE_STATUS (battery=$batteryLevel%, charging=$isCharging): ok=$ok")
     }
 
     fun sendStreamFrame(base64Frame: String, width: Int, height: Int) {
-        if (!isConnected) return
+        if (!isConnected || activeWebSocket == null) return
         val msg = BaseMessage(
             type = MessageType.STREAM_FRAME,
             sourceId = deviceId,
@@ -220,14 +233,28 @@ class LanConnectionClient(
 
     private fun sendJson(jsonStr: String): Boolean {
         return try {
-            activeWebSocket?.send(jsonStr) ?: false
+            val ws = activeWebSocket
+            if (ws == null) {
+                Log.w(TAG, "Cannot send data: activeWebSocket is null")
+                false
+            } else {
+                val ok = ws.send(jsonStr)
+                if (!ok) {
+                    Log.w(TAG, "WebSocket.send returned false (queue full or socket closing)")
+                }
+                ok
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending data: ${e.message}")
             false
         }
     }
 
-    private fun handleDisconnect(reason: String) {
+    private fun handleDisconnect(reason: String, closedSocket: WebSocket? = null) {
+        if (closedSocket != null && closedSocket !== activeWebSocket) {
+            Log.d(TAG, "Ignoring disconnect callback from stale socket ($reason)")
+            return
+        }
         isConnected = false
         activeWebSocket = null
         onConnectionStateChanged(false, reason)

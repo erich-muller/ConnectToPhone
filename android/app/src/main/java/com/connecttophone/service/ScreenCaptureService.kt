@@ -67,6 +67,7 @@ class ScreenCaptureService : Service() {
 
     private var lastFrameTime = 0L
     private val frameIntervalMs = 33L // ~30 FPS
+    private var frameCount = 0L
     private var cleanBuffer: ByteBuffer? = null
     private var reusableBitmap: Bitmap? = null
     private val outStream = ByteArrayOutputStream()
@@ -80,9 +81,15 @@ class ScreenCaptureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
-        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent?.getParcelableExtra(EXTRA_DATA, Intent::class.java)
-        } else {
+        val resultData: Intent? = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent?.getParcelableExtra(EXTRA_DATA, Intent::class.java)
+                    ?: @Suppress("DEPRECATION") intent?.getParcelableExtra(EXTRA_DATA)
+            } else {
+                @Suppress("DEPRECATION")
+                intent?.getParcelableExtra(EXTRA_DATA)
+            }
+        } catch (e: Exception) {
             @Suppress("DEPRECATION")
             intent?.getParcelableExtra(EXTRA_DATA)
         }
@@ -142,6 +149,9 @@ class ScreenCaptureService : Service() {
         try {
             calculateDimensions()
 
+            handlerThread = HandlerThread("ScreenCaptureThread").apply { start() }
+            backgroundHandler = Handler(handlerThread!!.looper)
+
             mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
             if (mediaProjection == null) {
                 Log.e(TAG, "mediaProjection is null")
@@ -154,10 +164,7 @@ class ScreenCaptureService : Service() {
                     Log.d(TAG, "MediaProjection session stopped by system")
                     stopSelf()
                 }
-            }, null)
-
-            handlerThread = HandlerThread("ScreenCaptureThread").apply { start() }
-            backgroundHandler = Handler(handlerThread!!.looper)
+            }, backgroundHandler)
 
             setupImageReaderAndBuffers()
 
@@ -240,15 +247,30 @@ class ScreenCaptureService : Service() {
             directBuf.clear()
 
             val bufferCapacity = buffer.capacity()
-            for (y in 0 until screenHeight) {
-                val rowStart = y * rowStride
-                if (rowStart >= bufferCapacity) break
-                buffer.position(rowStart)
-                val oldLimit = buffer.limit()
-                val targetLimit = minOf(rowStart + rowBytes, bufferCapacity)
-                buffer.limit(targetLimit)
+            if (rowStride == rowBytes) {
+                val copyLen = minOf(bufferCapacity, screenWidth * screenHeight * 4)
+                buffer.position(0)
+                buffer.limit(copyLen)
                 directBuf.put(buffer)
-                buffer.limit(oldLimit)
+            } else {
+                for (y in 0 until screenHeight) {
+                    val rowStart = y * rowStride
+                    if (rowStart + rowBytes <= bufferCapacity) {
+                        buffer.position(rowStart)
+                        buffer.limit(rowStart + rowBytes)
+                        directBuf.put(buffer)
+                    } else if (rowStart < bufferCapacity) {
+                        val available = bufferCapacity - rowStart
+                        buffer.position(rowStart)
+                        buffer.limit(bufferCapacity)
+                        directBuf.put(buffer)
+                        val pad = ByteArray(rowBytes - available)
+                        directBuf.put(pad)
+                    } else {
+                        val pad = ByteArray(rowBytes)
+                        directBuf.put(pad)
+                    }
+                }
             }
 
             directBuf.rewind()
@@ -260,6 +282,10 @@ class ScreenCaptureService : Service() {
             val base64Frame = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
 
             CompanionService.sendScreenFrame(base64Frame, screenWidth, screenHeight)
+            frameCount++
+            if (frameCount == 1L || frameCount % 60L == 0L) {
+                Log.d(TAG, "Sent frame #$frameCount (${jpegBytes.size} bytes, ${screenWidth}x${screenHeight})")
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error processing frame: ${e.message}")
