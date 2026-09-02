@@ -3,6 +3,7 @@ package com.connecttophone
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
@@ -35,10 +36,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            CompanionService.instance?.lanClient?.sendStreamStartResponse("accepted")
+            CompanionService.sendStreamStartResponse("accepted")
             startScreenCaptureService(result.resultCode, result.data!!)
         } else {
-            CompanionService.instance?.lanClient?.sendStreamStartResponse("rejected")
+            CompanionService.sendStreamStartResponse("rejected")
             Toast.makeText(this, "Permissão de espelhamento negada", Toast.LENGTH_SHORT).show()
         }
     }
@@ -68,9 +69,9 @@ class MainActivity : AppCompatActivity() {
                 updateDeviceStatus()
                 if (success) {
                     binding.etPin.setText("")
-                    Toast.makeText(this, "✅ Pareamento concluído com sucesso!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Pareamento concluído com sucesso", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this, "❌ PIN incorreto ou pareamento rejeitado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "PIN incorreto ou pareamento rejeitado", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -82,7 +83,9 @@ class MainActivity : AppCompatActivity() {
         CompanionService.onPcDiscoveredListener = { _, pcName, ip, _ ->
             runOnUiThread {
                 if (!prefs.isPaired) {
-                    binding.tvStatus.text = "🟡 PC encontrado ($pcName em $ip). Digite o PIN ou escaneie o QR."
+                    binding.tvStatus.text = "PC encontrado ($pcName em $ip). Digite o PIN ou escaneie o QR."
+                    binding.tvStatus.setTextColor(getColor(R.color.adw_warning))
+                    binding.ivStatusDot.imageTintList = ColorStateList.valueOf(getColor(R.color.adw_warning))
                 }
             }
         }
@@ -160,19 +163,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateDeviceStatus() {
         if (prefs.isPaired) {
-            binding.tvPcName.text = prefs.pairedPcName ?: "Linux PC"
-            binding.tvStatus.text = "🟢 Conectado ao PC na rede local"
-            binding.tvStatus.setTextColor(getColor(R.color.success))
+            val pcName = prefs.pairedPcName ?: "Linux PC"
+            binding.tvPcName.text = pcName
+            binding.tvStatus.text = "Conectado ao PC na rede local"
+            binding.tvStatus.setTextColor(getColor(R.color.adw_success))
+            binding.ivStatusDot.imageTintList = ColorStateList.valueOf(getColor(R.color.adw_success))
         } else {
             val discovered = CompanionService.lastDiscoveredPcName
             if (!discovered.isNullOrEmpty()) {
                 binding.tvPcName.text = discovered
-                binding.tvStatus.text = "🟡 PC localizado na rede (${CompanionService.lastDiscoveredPcIp}). Pronto para parear."
+                val ip = CompanionService.lastDiscoveredPcIp ?: ""
+                binding.tvStatus.text = "PC localizado na rede ($ip). Pronto para parear."
             } else {
-                binding.tvPcName.text = "ConnectToPhone"
-                binding.tvStatus.text = "🟡 Aguardando pareamento na rede local"
+                binding.tvPcName.text = "Nenhum PC Conectado"
+                binding.tvStatus.text = "Aguardando PC na rede local..."
             }
-            binding.tvStatus.setTextColor(getColor(R.color.warning))
+            binding.tvStatus.setTextColor(getColor(R.color.adw_warning))
+            binding.ivStatusDot.imageTintList = ColorStateList.valueOf(getColor(R.color.adw_warning))
         }
     }
 

@@ -312,7 +312,7 @@ class ScreenCaptureService : Service() {
             Log.e(TAG, "Error during cleanup: ${e.message}")
         }
         try {
-            CompanionService.instance?.lanClient?.sendStreamStop("Serviço de captura finalizado no celular")
+            CompanionService.sendStreamStop("Serviço de captura finalizado no celular")
         } catch (e: Exception) {
             // Ignore
         }

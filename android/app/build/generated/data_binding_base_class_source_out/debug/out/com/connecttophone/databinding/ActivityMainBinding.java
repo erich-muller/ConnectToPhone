@@ -4,6 +4,7 @@ package com.connecttophone.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -35,6 +36,9 @@ public final class ActivityMainBinding implements ViewBinding {
   public final TextInputEditText etPin;
 
   @NonNull
+  public final ImageView ivStatusDot;
+
+  @NonNull
   public final SwitchMaterial switchAutoConnect;
 
   @NonNull
@@ -55,14 +59,15 @@ public final class ActivityMainBinding implements ViewBinding {
   private ActivityMainBinding(@NonNull ScrollView rootView,
       @NonNull MaterialButton btnAccessibility, @NonNull MaterialButton btnPairPin,
       @NonNull MaterialButton btnScanQr, @NonNull TextInputEditText etPin,
-      @NonNull SwitchMaterial switchAutoConnect, @NonNull SwitchMaterial switchClipboard,
-      @NonNull SwitchMaterial switchImages, @NonNull TextView tvBgBadge, @NonNull TextView tvPcName,
-      @NonNull TextView tvStatus) {
+      @NonNull ImageView ivStatusDot, @NonNull SwitchMaterial switchAutoConnect,
+      @NonNull SwitchMaterial switchClipboard, @NonNull SwitchMaterial switchImages,
+      @NonNull TextView tvBgBadge, @NonNull TextView tvPcName, @NonNull TextView tvStatus) {
     this.rootView = rootView;
     this.btnAccessibility = btnAccessibility;
     this.btnPairPin = btnPairPin;
     this.btnScanQr = btnScanQr;
     this.etPin = etPin;
+    this.ivStatusDot = ivStatusDot;
     this.switchAutoConnect = switchAutoConnect;
     this.switchClipboard = switchClipboard;
     this.switchImages = switchImages;
@@ -122,6 +127,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.ivStatusDot;
+      ImageView ivStatusDot = ViewBindings.findChildViewById(rootView, id);
+      if (ivStatusDot == null) {
+        break missingId;
+      }
+
       id = R.id.switchAutoConnect;
       SwitchMaterial switchAutoConnect = ViewBindings.findChildViewById(rootView, id);
       if (switchAutoConnect == null) {
@@ -159,7 +170,8 @@ public final class ActivityMainBinding implements ViewBinding {
       }
 
       return new ActivityMainBinding((ScrollView) rootView, btnAccessibility, btnPairPin, btnScanQr,
-          etPin, switchAutoConnect, switchClipboard, switchImages, tvBgBadge, tvPcName, tvStatus);
+          etPin, ivStatusDot, switchAutoConnect, switchClipboard, switchImages, tvBgBadge, tvPcName,
+          tvStatus);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

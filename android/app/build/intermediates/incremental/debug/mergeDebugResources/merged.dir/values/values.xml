@@ -630,12 +630,27 @@
     <color name="abc_search_url_text_normal">#7fa87f</color>
     <color name="abc_search_url_text_pressed">@android:color/black</color>
     <color name="abc_search_url_text_selected">@android:color/black</color>
-    <color name="accent">#3B82F6</color>
+    <color name="accent">@color/adw_accent</color>
     <color name="accent_material_dark">@color/material_deep_teal_200</color>
     <color name="accent_material_light">@color/material_deep_teal_500</color>
+    <color name="adw_accent">#3584E4</color>
+    <color name="adw_accent_hover">#1C71D8</color>
+    <color name="adw_accent_soft">#1B3A57</color>
+    <color name="adw_card_bg">#303030</color>
+    <color name="adw_card_border">#3D3D3D</color>
+    <color name="adw_card_hover">#383838</color>
+    <color name="adw_divider">#3D3D3D</color>
+    <color name="adw_error">#E01B24</color>
+    <color name="adw_success">#33D17A</color>
+    <color name="adw_text_disabled">#77767B</color>
+    <color name="adw_text_muted">#9A9996</color>
+    <color name="adw_text_primary">#FFFFFF</color>
+    <color name="adw_text_secondary">#C0BFBC</color>
+    <color name="adw_warning">#E5A50A</color>
+    <color name="adw_window_bg">#242424</color>
     <color name="androidx_core_ripple_material_light">#1f000000</color>
     <color name="androidx_core_secondary_text_default_material_light">#8a000000</color>
-    <color name="background_dark">#18181B</color>
+    <color name="background_dark">@color/adw_window_bg</color>
     <color name="background_floating_material_dark">@color/material_grey_800</color>
     <color name="background_floating_material_light">@android:color/white</color>
     <color name="background_material_dark">@color/material_grey_850</color>
@@ -650,13 +665,13 @@
     <color name="button_material_light">#ffd6d7d7</color>
     <color name="call_notification_answer_color">#1d873b</color>
     <color name="call_notification_decline_color">#d93025</color>
-    <color name="card_border">#3F3F46</color>
-    <color name="card_border_light">#52525B</color>
+    <color name="card_border">@color/adw_card_border</color>
+    <color name="card_border_light">@color/adw_card_hover</color>
     <color name="cardview_dark_background">#FF424242</color>
     <color name="cardview_light_background">#FFFFFFFF</color>
     <color name="cardview_shadow_end_color">#03000000</color>
     <color name="cardview_shadow_start_color">#37000000</color>
-    <color name="danger">#EF4444</color>
+    <color name="danger">@color/adw_error</color>
     <color name="design_bottom_navigation_shadow_color">#14000000</color>
     <color name="design_dark_default_color_background">#121212</color>
     <color name="design_dark_default_color_error">#CF6679</color>
@@ -941,11 +956,11 @@
     <color name="mtrl_textinput_hovered_box_stroke_color">#DE000000</color>
     <color name="notification_action_color_filter">#ffffffff</color>
     <color name="notification_icon_bg_color">#ff9e9e9e</color>
-    <color name="primary">#2563EB</color>
-    <color name="primary_dark">#1E40AF</color>
+    <color name="primary">@color/adw_accent</color>
+    <color name="primary_dark">#1C71D8</color>
     <color name="primary_dark_material_dark">@android:color/black</color>
     <color name="primary_dark_material_light">@color/material_grey_600</color>
-    <color name="primary_hover">#1D4ED8</color>
+    <color name="primary_hover">@color/adw_accent_hover</color>
     <color name="primary_material_dark">@color/material_grey_900</color>
     <color name="primary_material_light">@color/material_grey_100</color>
     <color name="primary_text_default_material_dark">#ffffffff</color>
@@ -958,18 +973,18 @@
     <color name="secondary_text_default_material_light">#8a000000</color>
     <color name="secondary_text_disabled_material_dark">#36ffffff</color>
     <color name="secondary_text_disabled_material_light">#24000000</color>
-    <color name="success">#22C55E</color>
-    <color name="surface_dark">#27272A</color>
+    <color name="success">@color/adw_success</color>
+    <color name="surface_dark">@color/adw_card_bg</color>
     <color name="switch_thumb_disabled_material_dark">#ff616161</color>
     <color name="switch_thumb_disabled_material_light">#ffbdbdbd</color>
     <color name="switch_thumb_normal_material_dark">#ffbdbdbd</color>
     <color name="switch_thumb_normal_material_light">#fff1f1f1</color>
-    <color name="text_muted">#71717A</color>
-    <color name="text_primary">#F4F4F5</color>
-    <color name="text_secondary">#A1A1AA</color>
+    <color name="text_muted">@color/adw_text_muted</color>
+    <color name="text_primary">@color/adw_text_primary</color>
+    <color name="text_secondary">@color/adw_text_secondary</color>
     <color name="tooltip_background_dark">#e6616161</color>
     <color name="tooltip_background_light">#e6FFFFFF</color>
-    <color name="warning">#F59E0B</color>
+    <color name="warning">@color/adw_warning</color>
     <color name="zxing_custom_possible_result_points">#903A89CF</color>
     <color name="zxing_custom_result_view">#b0000000</color>
     <color name="zxing_custom_viewfinder_laser">#1976D2</color>
@@ -6407,11 +6422,16 @@
         <item name="windowNoTitle">true</item>
     </style>
     <style name="Theme.ConnectToPhone" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimary">@color/adw_accent</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="android:statusBarColor">@color/background_dark</item>
-        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="colorSecondary">@color/adw_accent</item>
+        <item name="android:statusBarColor">@color/adw_window_bg</item>
+        <item name="android:navigationBarColor">@color/adw_window_bg</item>
+        <item name="android:windowBackground">@color/adw_window_bg</item>
+        
+        
+        <item name="colorSurface">@color/adw_card_bg</item>
+        <item name="colorOnSurface">@color/adw_text_primary</item>
     </style>
     <style name="Theme.Design" parent="Theme.AppCompat">
   </style>

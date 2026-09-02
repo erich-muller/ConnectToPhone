@@ -63,6 +63,14 @@ class CompanionService : Service() {
         fun sendScreenFrame(base64Frame: String, width: Int, height: Int) {
             instance?.lanClient?.sendStreamFrame(base64Frame, width, height)
         }
+
+        fun sendStreamStartResponse(status: String) {
+            instance?.lanClient?.sendStreamStartResponse(status)
+        }
+
+        fun sendStreamStop(reason: String = "User stopped") {
+            instance?.lanClient?.sendStreamStop(reason)
+        }
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

@@ -1,6 +1,21 @@
 R_DEF: Internal format may change without notice
 local
 color accent
+color adw_accent
+color adw_accent_hover
+color adw_accent_soft
+color adw_card_bg
+color adw_card_border
+color adw_card_hover
+color adw_divider
+color adw_error
+color adw_success
+color adw_text_disabled
+color adw_text_muted
+color adw_text_primary
+color adw_text_secondary
+color adw_warning
+color adw_window_bg
 color background_dark
 color card_border
 color card_border_light
@@ -14,12 +29,22 @@ color text_muted
 color text_primary
 color text_secondary
 color warning
+drawable bg_badge_adw
+drawable ic_content_copy
+drawable ic_desktop_mac
+drawable ic_dialpad
+drawable ic_image
 drawable ic_launcher_background
 drawable ic_launcher_foreground
+drawable ic_qr_code_scanner
+drawable ic_settings_gesture
+drawable ic_status_dot
+drawable ic_wifi_refresh
 id btnAccessibility
 id btnPairPin
 id btnScanQr
 id etPin
+id ivStatusDot
 id switchAutoConnect
 id switchClipboard
 id switchImages

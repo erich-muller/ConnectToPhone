@@ -1,19 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent">#3B82F6</color>
-    <color name="background_dark">#18181B</color>
-    <color name="card_border">#3F3F46</color>
-    <color name="card_border_light">#52525B</color>
-    <color name="danger">#EF4444</color>
-    <color name="primary">#2563EB</color>
-    <color name="primary_dark">#1E40AF</color>
-    <color name="primary_hover">#1D4ED8</color>
-    <color name="success">#22C55E</color>
-    <color name="surface_dark">#27272A</color>
-    <color name="text_muted">#71717A</color>
-    <color name="text_primary">#F4F4F5</color>
-    <color name="text_secondary">#A1A1AA</color>
-    <color name="warning">#F59E0B</color>
+    <color name="accent">@color/adw_accent</color>
+    <color name="adw_accent">#3584E4</color>
+    <color name="adw_accent_hover">#1C71D8</color>
+    <color name="adw_accent_soft">#1B3A57</color>
+    <color name="adw_card_bg">#303030</color>
+    <color name="adw_card_border">#3D3D3D</color>
+    <color name="adw_card_hover">#383838</color>
+    <color name="adw_divider">#3D3D3D</color>
+    <color name="adw_error">#E01B24</color>
+    <color name="adw_success">#33D17A</color>
+    <color name="adw_text_disabled">#77767B</color>
+    <color name="adw_text_muted">#9A9996</color>
+    <color name="adw_text_primary">#FFFFFF</color>
+    <color name="adw_text_secondary">#C0BFBC</color>
+    <color name="adw_warning">#E5A50A</color>
+    <color name="adw_window_bg">#242424</color>
+    <color name="background_dark">@color/adw_window_bg</color>
+    <color name="card_border">@color/adw_card_border</color>
+    <color name="card_border_light">@color/adw_card_hover</color>
+    <color name="danger">@color/adw_error</color>
+    <color name="primary">@color/adw_accent</color>
+    <color name="primary_dark">#1C71D8</color>
+    <color name="primary_hover">@color/adw_accent_hover</color>
+    <color name="success">@color/adw_success</color>
+    <color name="surface_dark">@color/adw_card_bg</color>
+    <color name="text_muted">@color/adw_text_muted</color>
+    <color name="text_primary">@color/adw_text_primary</color>
+    <color name="text_secondary">@color/adw_text_secondary</color>
+    <color name="warning">@color/adw_warning</color>
     <string name="accessibility_description">Permite ao ConnectToPhone sincronizar a área de transferência mesmo com o aplicativo em segundo plano.</string>
     <string name="app_name">ConnectToPhone</string>
     <string name="channel_description">Mantém a conexão contínua entre celular e PC Linux</string>
@@ -23,10 +38,15 @@
     <string name="service_running_title">ConnectToPhone Ativo</string>
     <string name="service_searching">Procurando PC na rede local...</string>
     <style name="Theme.ConnectToPhone" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimary">@color/adw_accent</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="android:statusBarColor">@color/background_dark</item>
-        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="colorSecondary">@color/adw_accent</item>
+        <item name="android:statusBarColor">@color/adw_window_bg</item>
+        <item name="android:navigationBarColor">@color/adw_window_bg</item>
+        <item name="android:windowBackground">@color/adw_window_bg</item>
+        
+        
+        <item name="colorSurface">@color/adw_card_bg</item>
+        <item name="colorOnSurface">@color/adw_text_primary</item>
     </style>
 </resources>
