@@ -212,6 +212,18 @@ class CompanionService : Service() {
                     clipboardSyncManager?.applyRemoteImage(b64)
                 }
             }
+            MessageType.AUTH_RESPONSE -> {
+                val status = payload.get("status")?.asString
+                if (status == "accepted") {
+                    val pcName = payload.get("device_name")?.asString ?: "Linux PC"
+                    lanClient?.setAuthenticated(true, "Conectado")
+                    Log.d(TAG, "Authenticated successfully with $pcName.")
+                } else {
+                    val reason = payload.get("reason")?.asString ?: "rejected"
+                    Log.w(TAG, "Authentication rejected by PC: $reason")
+                    lanClient?.setAuthenticated(false, "Falha na autenticação ($reason)")
+                }
+            }
             MessageType.PAIR_RESPONSE -> {
                 val status = payload.get("status")?.asString
                 if (status == "accepted") {
@@ -222,11 +234,13 @@ class CompanionService : Service() {
                     val pcId = if (sourceId.isNotEmpty()) sourceId else (lastDiscoveredPcId ?: "linux_pc")
                     prefs.savePairing(pcId, pcName, hostIp, hostPort, token)
                     lanClient?.setAuthToken(token)
+                    lanClient?.setAuthenticated(true, "Conectado")
                     onPairingStateChangedListener?.invoke(true)
                     Log.d(TAG, "Pairing successful! Saved credentials for $pcId ($pcName at $hostIp:$hostPort).")
                 } else {
                     val reason = payload.get("reason")?.asString ?: "unknown"
                     Log.w(TAG, "Pairing rejected by PC: $reason")
+                    lanClient?.setAuthenticated(false, "Pareamento rejeitado")
                     onPairingStateChangedListener?.invoke(false)
                 }
             }

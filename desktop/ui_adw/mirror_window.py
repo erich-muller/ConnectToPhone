@@ -1,6 +1,7 @@
 """
 Screen Mirror Window for ConnectToPhone (GTK4 / Libadwaita).
 Hardware-accelerated rendering with Gtk.Picture, touch/mouse/gesture relay, and keyboard relay.
+Includes Minimize, Maximize, and Close titlebar buttons without emojis.
 """
 
 import time
@@ -40,11 +41,14 @@ class MirrorWindowAdw(Adw.Window):
         toolbar_view = Adw.ToolbarView()
         self.set_content(toolbar_view)
 
-        # Header Bar
+        # Header Bar with Minimize, Maximize, and Close buttons
         header_bar = Adw.HeaderBar()
+        header_bar.set_show_end_title_buttons(True)
+        header_bar.set_show_start_title_buttons(True)
+        header_bar.set_decoration_layout(":minimize,maximize,close")
         toolbar_view.add_top_bar(header_bar)
 
-        self.title_label = Gtk.Label(label="📱 Celular Android")
+        self.title_label = Gtk.Label(label="Espelhamento de Tela")
         self.title_label.add_css_class("heading")
         header_bar.set_title_widget(self.title_label)
 
@@ -102,6 +106,19 @@ class MirrorWindowAdw(Adw.Window):
         self.add_controller(key_controller)
 
         self.connect("close-request", self._on_close_requested)
+
+    def prepare_for_stream(self, device_name: str = "Celular"):
+        self.title_label.set_label(device_name)
+        self.placeholder_label.set_label("Aguardando transmissão de tela do celular...\n(Autorize a captura no aparelho se solicitado)")
+        self.placeholder_label.set_visible(True)
+        self.stats_badge.set_label("Aguardando...")
+
+    def on_stream_stopped(self, reason: str = "Transmissão encerrada"):
+        self._current_texture = None
+        self.video_picture.set_paintable(None)
+        self.placeholder_label.set_label(f"Transmissão de tela encerrada.\n({reason})")
+        self.placeholder_label.set_visible(True)
+        self.stats_badge.set_label("Parado")
 
     def update_frame_from_bytes(self, img_bytes: bytes, stats: Dict[str, Any]):
         try:
@@ -211,4 +228,5 @@ class MirrorWindowAdw(Adw.Window):
 
     def _on_close_requested(self, window):
         self.conn.request_stop_screen_mirror()
-        return False
+        self.set_visible(False)
+        return True

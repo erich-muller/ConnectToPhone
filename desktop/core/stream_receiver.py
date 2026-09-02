@@ -1,7 +1,7 @@
 """
 Screen Mirroring Stream Receiver for ConnectToPhone Desktop.
 Processes high-speed incoming video frames and manages touch/mouse/keyboard input relays.
-Works with both PyQt6 and GTK4 / Libadwaita.
+Uses thread-safe EventSignal for zero-latency frame dispatch directly to GTK4 / Libadwaita.
 """
 
 import base64
@@ -11,28 +11,12 @@ from typing import Optional, Dict, Any, Tuple
 from protocol.protocol_spec import MessageType, create_message
 from desktop.core.signals import EventSignal
 
-try:
-    from PyQt6.QtCore import QObject, pyqtSignal
-    from PyQt6.QtGui import QImage
-    HAS_PYQT = True
-except ImportError:
-    HAS_PYQT = False
-    QObject = object
 
-
-class StreamReceiver(QObject if HAS_PYQT else object):
-    if HAS_PYQT:
-        frame_received = pyqtSignal(object, dict)
-        stream_started = pyqtSignal()
-        stream_stopped = pyqtSignal(str)
-
+class StreamReceiver:
     def __init__(self, device_id: str):
-        if HAS_PYQT:
-            super().__init__()
-        else:
-            self.frame_received = EventSignal()
-            self.stream_started = EventSignal()
-            self.stream_stopped = EventSignal()
+        self.frame_received = EventSignal()
+        self.stream_started = EventSignal()
+        self.stream_stopped = EventSignal()
 
         self.device_id = device_id
         self._is_active = False
@@ -48,12 +32,18 @@ class StreamReceiver(QObject if HAS_PYQT else object):
         return self._is_active
 
     def on_stream_start_response(self, payload: Dict[str, Any]):
-        self._is_active = True
-        self._frame_count = 0
-        self._frames_since_calc = 0
-        self._last_fps_calc_time = time.time()
-        self.stream_started.emit()
-        print("[Stream] Screen stream started from Android")
+        status = payload.get("status", "accepted")
+        if status in ("accepted", "started"):
+            self._is_active = True
+            self._frame_count = 0
+            self._frames_since_calc = 0
+            self._last_fps_calc_time = time.time()
+            self.stream_started.emit()
+            print("[Stream] Screen stream started from Android")
+        else:
+            self._is_active = False
+            self.stream_stopped.emit(f"Recusado pelo celular ({status})")
+            print(f"[Stream] Screen stream start rejected: {status}")
 
     def on_stream_stop(self, reason: str = "User stopped"):
         self._is_active = False
@@ -93,15 +83,7 @@ class StreamReceiver(QObject if HAS_PYQT else object):
                 "timestamp": payload.get("timestamp", 0)
             }
 
-            if HAS_PYQT:
-                try:
-                    qimg = QImage.fromData(raw_bytes)
-                    if not qimg.isNull():
-                        self.frame_received.emit(qimg, stats)
-                        return
-                except Exception:
-                    pass
-
+            # Emit raw JPEG bytes directly to UI listener
             self.frame_received.emit(raw_bytes, stats)
         except Exception as e:
             print(f"[Stream] Error processing frame: {e}")

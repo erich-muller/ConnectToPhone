@@ -1,13 +1,14 @@
 """
 UDP Local Network Discovery service for ConnectToPhone.
 Enables zero-configuration pairing and auto-detection of Android phones and Linux PC on LAN.
+Supports broadcast, subnet broadcast, and targeted unicast to known paired devices.
 """
 
 import socket
 import json
 import threading
 import time
-from typing import Callable, List, Optional, Dict, Any
+from typing import Callable, List, Optional, Dict, Any, Set
 from protocol.protocol_spec import (
     DEFAULT_DISCOVERY_PORT, DEFAULT_WS_PORT,
     MessageType, create_message, deserialize_message, serialize_message
@@ -42,6 +43,19 @@ def get_all_local_ips() -> List[str]:
         ips.insert(0, primary)
     return ips if ips else ['127.0.0.1']
 
+def get_subnet_broadcasts() -> List[str]:
+    """Calculate subnet-directed broadcast addresses (e.g. 192.168.1.255) for local interfaces."""
+    bcasts = []
+    for ip in get_all_local_ips():
+        if ip.startswith('127.'):
+            continue
+        parts = ip.split('.')
+        if len(parts) == 4:
+            bcast = f"{parts[0]}.{parts[1]}.{parts[2]}.255"
+            if bcast not in bcasts:
+                bcasts.append(bcast)
+    return bcasts
+
 
 class DiscoveryService:
     def __init__(
@@ -58,10 +72,20 @@ class DiscoveryService:
         self.discovery_port = discovery_port
         self.on_device_discovered = on_device_discovered
 
+        self._target_ips: Set[str] = set()
         self._running = False
         self._listener_thread: Optional[threading.Thread] = None
         self._beacon_thread: Optional[threading.Thread] = None
         self._sock: Optional[socket.socket] = None
+
+    def add_target_ip(self, ip: str):
+        """Add a specific device IP to always receive direct unicast beacons."""
+        if ip and not ip.startswith('127.'):
+            self._target_ips.add(ip)
+
+    def set_target_ips(self, ips: List[str]):
+        """Update target device IPs to ping directly."""
+        self._target_ips = {ip for ip in ips if ip and not ip.startswith('127.')}
 
     def start(self):
         """Start UDP listener and periodic announcement beacon."""
@@ -87,6 +111,9 @@ class DiscoveryService:
         self._beacon_thread.start()
         print(f"[Discovery] Service started on port {self.discovery_port}")
 
+        # Send immediate burst to announce presence without waiting
+        self.trigger_burst(count=2, delay_sec=0.2)
+
     def stop(self):
         """Stop discovery service."""
         self._running = False
@@ -102,7 +129,7 @@ class DiscoveryService:
         print("[Discovery] Service stopped")
 
     def broadcast_beacon(self):
-        """Broadcast a single announcement packet to the local subnet."""
+        """Broadcast an announcement packet to 255.255.255.255, subnet broadcast, and paired unicast IPs."""
         if not self._sock or not self._running:
             return
         msg = create_message(
@@ -116,11 +143,29 @@ class DiscoveryService:
             source_id=self.device_id
         )
         data = serialize_message(msg).encode('utf-8')
-        try:
-            self._sock.sendto(data, ('<broadcast>', self.discovery_port))
-        except Exception as e:
-            # Broadcast might fail if network is not up yet
-            pass
+
+        # 1. Global subnet broadcast
+        destinations = {'<broadcast>', '255.255.255.255'}
+        # 2. Directed subnet broadcast (e.g. 192.168.1.255)
+        destinations.update(get_subnet_broadcasts())
+        # 3. Direct unicast to known paired device IPs
+        destinations.update(self._target_ips)
+
+        for dest in destinations:
+            try:
+                self._sock.sendto(data, (dest, self.discovery_port))
+            except Exception:
+                pass
+
+    def trigger_burst(self, count: int = 3, delay_sec: float = 0.2):
+        """Send a rapid succession of beacons to immediately wake up devices upon app launch or reconnect."""
+        def _burst():
+            for _ in range(count):
+                if not self._running:
+                    break
+                self.broadcast_beacon()
+                time.sleep(delay_sec)
+        threading.Thread(target=_burst, daemon=True, name="DiscoveryBurst").start()
 
     def _listen_loop(self):
         while self._running and self._sock:

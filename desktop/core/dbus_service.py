@@ -5,6 +5,7 @@ and single-instance desktop control.
 """
 
 import json
+import time
 from typing import Optional, Dict, Any, Callable
 
 try:
@@ -16,6 +17,8 @@ try:
 except Exception:
     HAS_GIO = False
 
+from desktop.core.clipboard_service import ClipboardItem
+
 DBUS_INTROSPECTION_XML = """
 <node>
   <interface name="org.connecttophone.Daemon">
@@ -25,10 +28,19 @@ DBUS_INTROSPECTION_XML = """
     <method name="OpenWindow"/>
     <method name="OpenMirror"/>
     <method name="OpenPairDialog"/>
+    <method name="ReconnectDevice"/>
+    <method name="TriggerDiscovery"/>
     <method name="ToggleClipboardSync">
       <arg type="b" name="enabled" direction="in"/>
     </method>
+    <method name="ReportClipboardText">
+      <arg type="s" name="text" direction="in"/>
+    </method>
+    <method name="ReportClipboardImage">
+      <arg type="s" name="b64_data" direction="in"/>
+    </method>
     <method name="DisconnectDevice"/>
+    <method name="Quit"/>
     <signal name="StatusChanged">
       <arg type="s" name="status_json"/>
     </signal>
@@ -47,7 +59,8 @@ class DBusService:
         clipboard_service,
         on_open_window: Optional[Callable[[], None]] = None,
         on_open_mirror: Optional[Callable[[], None]] = None,
-        on_open_pair: Optional[Callable[[], None]] = None
+        on_open_pair: Optional[Callable[[], None]] = None,
+        on_quit: Optional[Callable[[], None]] = None
     ):
         self.conn = connection_manager
         self.config = config_manager
@@ -55,6 +68,7 @@ class DBusService:
         self.on_open_window = on_open_window
         self.on_open_mirror = on_open_mirror
         self.on_open_pair = on_open_pair
+        self.on_quit = on_quit
 
         self._owner_id = 0
         self._registered_id = 0
@@ -69,10 +83,10 @@ class DBusService:
 
     def _hook_events(self):
         try:
-            self.conn.state_changed.connect(self._on_state_changed)
-            self.conn.device_status_updated.connect(self._on_device_status)
-        except Exception:
-            pass
+            self.conn.state_changed.connect(lambda s, d: GLib.idle_add(self._on_state_changed, s, d))
+            self.conn.device_status_updated.connect(lambda st: GLib.idle_add(self._on_device_status, st))
+        except Exception as e:
+            print(f"[DBus] Error hooking connection manager events: {e}")
 
     def start(self):
         """Acquire D-Bus bus name and register object."""
@@ -111,11 +125,13 @@ class DBusService:
                 None
             )
             print(f"[DBus] Object registered at path {self.OBJECT_PATH}")
+            GLib.timeout_add(100, lambda: (self.emit_status_changed(), False)[1])
         except Exception as e:
             print(f"[DBus] Error registering DBus object: {e}")
 
     def _on_name_acquired(self, conn: Gio.DBusConnection, name: str):
         print(f"[DBus] Bus name acquired: {name}")
+        self.emit_status_changed()
 
     def _on_name_lost(self, conn: Optional[Gio.DBusConnection], name: str):
         print(f"[DBus] Bus name lost: {name}")
@@ -193,6 +209,10 @@ class DBusService:
                     GLib.idle_add(self.on_open_pair)
                 invocation.return_value(None)
 
+            elif method_name in ("ReconnectDevice", "TriggerDiscovery"):
+                self.conn.trigger_discovery()
+                invocation.return_value(None)
+
             elif method_name == "ToggleClipboardSync":
                 enabled, = parameters.unpack()
                 self.config.set("sync_clipboard", enabled)
@@ -200,11 +220,52 @@ class DBusService:
                 self.emit_status_changed()
                 invocation.return_value(None)
 
+            elif method_name == "ReportClipboardText":
+                text, = parameters.unpack()
+                if text:
+                    text_bytes = text.encode('utf-8')
+                    text_hash = self.clipboard._compute_hash(text_bytes)
+                    if text_hash != self.clipboard._last_content_hash and time.time() >= self.clipboard._ignore_until:
+                        self.clipboard._last_content_hash = text_hash
+                        preview = text[:60] + ("..." if len(text) > 60 else "")
+                        item = ClipboardItem(
+                            item_type="text",
+                            content=text,
+                            source="local",
+                            timestamp=time.time(),
+                            preview=preview
+                        )
+                        self.clipboard._add_to_history(item)
+                        self.clipboard._emit_local_text(text)
+                        print(f"[Clipboard] (GNOME Extension) Local text captured: {preview!r}")
+                invocation.return_value(None)
+
+            elif method_name == "ReportClipboardImage":
+                b64_data, = parameters.unpack()
+                if b64_data and self.clipboard._sync_images:
+                    img_hash = self.clipboard._compute_hash(b64_data.encode('utf-8'))
+                    if img_hash != self.clipboard._last_content_hash and time.time() >= self.clipboard._ignore_until:
+                        self.clipboard._last_content_hash = img_hash
+                        preview = "Imagem capturada"
+                        item = ClipboardItem(
+                            item_type="image",
+                            content=b64_data,
+                            source="local",
+                            timestamp=time.time(),
+                            preview=preview
+                        )
+                        self.clipboard._add_to_history(item)
+                        self.clipboard._emit_local_image(b64_data)
+                        print(f"[Clipboard] (GNOME Extension) Local image captured")
+                invocation.return_value(None)
+
             elif method_name == "DisconnectDevice":
-                if self.conn._active_ws:
-                    import asyncio
-                    if self.conn._loop:
-                        asyncio.run_coroutine_threadsafe(self.conn._active_ws.close(), self.conn._loop)
+                self.conn.disconnect_current_device()
+                invocation.return_value(None)
+
+            elif method_name == "Quit":
+                if self.on_quit:
+                    GLib.idle_add(self.on_quit)
                 invocation.return_value(None)
 
             else:
@@ -220,4 +281,3 @@ class DBusService:
                 Gio.DBusError.FAILED,
                 str(e)
             )
-

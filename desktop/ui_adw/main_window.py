@@ -5,7 +5,7 @@ Compliant with GNOME Human Interface Guidelines (HIG).
 
 import os
 import time
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 import gi
 gi.require_version('Gtk', '4.0')
@@ -62,6 +62,9 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.mirror_window: Optional[MirrorWindowAdw] = None
         self.pair_dialog: Optional[PairDialogAdw] = None
         self._history_rows: List[ClipboardRowAdw] = []
+
+        self._pending_frame: Optional[Tuple[bytes, Dict[str, Any]]] = None
+        self._render_scheduled = False
 
         self.set_title("ConnectToPhone")
         self.set_default_size(540, 680)
@@ -167,7 +170,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
 
         hero_box.append(dev_row)
 
-        # Action Buttons Row (Screen Mirror, Connect QR)
+        # Action Buttons Row (Screen Mirror, Connect QR, Reconnect)
         action_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         action_btn_box.set_margin_top(4)
 
@@ -178,7 +181,13 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.mirror_btn.set_sensitive(False)
         action_btn_box.append(self.mirror_btn)
 
-        self.connect_btn = Gtk.Button(label="Conectar [QR Code]")
+        self.reconnect_btn = Gtk.Button(label="Buscar Celular")
+        self.reconnect_btn.set_icon_name("network-wireless-signal-good-symbolic")
+        self.reconnect_btn.set_hexpand(True)
+        self.reconnect_btn.connect("clicked", lambda b: self._on_reconnect_clicked())
+        action_btn_box.append(self.reconnect_btn)
+
+        self.connect_btn = Gtk.Button(label="Vincular Novo [QR]")
         self.connect_btn.set_icon_name("view-refresh-symbolic")
         self.connect_btn.set_hexpand(True)
         self.connect_btn.add_css_class("suggested-action")
@@ -250,8 +259,8 @@ class MainWindowAdw(Adw.ApplicationWindow):
             self.conn.device_status_updated.connect(lambda st: GLib.idle_add(self._on_device_status_updated, st))
             self.conn.paired_success.connect(lambda did, name: GLib.idle_add(self._on_paired_success, did, name))
             self.conn.notification_requested.connect(lambda t, m: GLib.idle_add(self.show_toast, f"{t}: {m}"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[MainWin] Signal hook error: {e}")
 
         self.clipboard.add_listener("history_changed", lambda h: GLib.idle_add(self._on_history_changed, h))
 
@@ -259,6 +268,10 @@ class MainWindowAdw(Adw.ApplicationWindow):
         toast = Adw.Toast.new(message)
         toast.set_timeout(3)
         self.toast_overlay.add_toast(toast)
+
+    def _on_reconnect_clicked(self):
+        self.conn.trigger_discovery()
+        self.show_toast("Buscando celular na rede local...")
 
     def _update_device_ui(self):
         if self.conn.state == ConnectionState.CONNECTED:
@@ -268,13 +281,27 @@ class MainWindowAdw(Adw.ApplicationWindow):
             self.device_name_label.set_label(f"{name} ({model})" if model else name)
             self.status_label.set_label("🟢 Conectado")
             self.mirror_btn.set_sensitive(True)
+            self.reconnect_btn.set_visible(False)
 
             connected_icon = os.path.join(ASSETS_DIR, "phone_connected.svg")
             if os.path.exists(connected_icon):
                 self.phone_avatar.set_from_file(connected_icon)
         else:
-            self.device_name_label.set_label("Nenhum dispositivo")
-            self.status_label.set_label("🟡 Aguardando celular...")
+            paired = self.config.get_all_paired_devices()
+            if paired:
+                first_id = list(paired.keys())[0]
+                dev_info = paired[first_id]
+                paired_name = dev_info.get("name", "Celular Android")
+                last_ip = dev_info.get("last_ip", "")
+                ip_str = f" ({last_ip})" if last_ip else ""
+                self.device_name_label.set_label(paired_name)
+                self.status_label.set_label(f"🟡 Desconectado{ip_str} • Aguardando...")
+                self.reconnect_btn.set_visible(True)
+            else:
+                self.device_name_label.set_label("Nenhum dispositivo")
+                self.status_label.set_label("🟡 Aguardando celular...")
+                self.reconnect_btn.set_visible(False)
+
             self.battery_label.set_label("🔋 --%")
             self.mirror_btn.set_sensitive(False)
 
@@ -360,31 +387,37 @@ class MainWindowAdw(Adw.ApplicationWindow):
     def _open_screen_mirror(self, button=None):
         if self.mirror_window is None:
             self.mirror_window = MirrorWindowAdw(self.conn, parent=self)
-            self.conn.stream.frame_received.connect(
-                lambda frame_data, stats: GLib.idle_add(self._on_frame_received, frame_data, stats)
+            self.conn.stream.frame_received.connect(self._queue_frame_for_render)
+            self.conn.stream.stream_stopped.connect(
+                lambda reason: GLib.idle_add(self._on_stream_stopped, reason)
             )
 
-        dev = self.conn.connected_device
-        if dev:
-            self.mirror_window.title_label.set_label(f"📱 {dev.get('name', 'Android')}")
+        dev = self.conn.connected_device or {}
+        name = dev.get('name', 'Celular Android')
+        self.mirror_window.prepare_for_stream(name)
         self.mirror_window.set_visible(True)
         self.mirror_window.present()
         self.conn.request_start_screen_mirror(width=720, height=1280, fps=30)
 
-    def _on_frame_received(self, frame_data, stats):
-        if not self.mirror_window:
-            return
+    def _queue_frame_for_render(self, frame_bytes: bytes, stats: Dict[str, Any]):
+        self._pending_frame = (frame_bytes, stats)
+        if not self._render_scheduled:
+            self._render_scheduled = True
+            GLib.idle_add(self._render_pending_frame)
 
-        if isinstance(frame_data, bytes):
-            self.mirror_window.update_frame_from_bytes(frame_data, stats)
-        elif hasattr(frame_data, "isNull") and not frame_data.isNull():
-            from PyQt6.QtCore import QBuffer, QIODevice
-            buffer = QBuffer()
-            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-            frame_data.save(buffer, "PNG")
-            png_bytes = bytes(buffer.data())
-            buffer.close()
-            self.mirror_window.update_frame_from_bytes(png_bytes, stats)
+    def _render_pending_frame(self):
+        self._render_scheduled = False
+        if not self.mirror_window or not self.mirror_window.get_visible():
+            return False
+        pending = self._pending_frame
+        if pending:
+            frame_bytes, stats = pending
+            self.mirror_window.update_frame_from_bytes(frame_bytes, stats)
+        return False
+
+    def _on_stream_stopped(self, reason: str):
+        if self.mirror_window:
+            self.mirror_window.on_stream_stopped(reason)
 
     def _on_close_requested(self, window):
         # Hide the window instead of killing the background daemon

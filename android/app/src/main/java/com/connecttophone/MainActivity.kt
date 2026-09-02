@@ -35,8 +35,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            CompanionService.instance?.lanClient?.sendStreamStartResponse("accepted")
             startScreenCaptureService(result.resultCode, result.data!!)
         } else {
+            CompanionService.instance?.lanClient?.sendStreamStartResponse("rejected")
             Toast.makeText(this, "Permissão de espelhamento negada", Toast.LENGTH_SHORT).show()
         }
     }

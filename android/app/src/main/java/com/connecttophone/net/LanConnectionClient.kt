@@ -76,8 +76,7 @@ class LanConnectionClient(
 
         activeWebSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "WebSocket connected.")
-                isConnected = true
+                Log.d(TAG, "WebSocket connected, performing handshake...")
 
                 // Send pairing request or authentication
                 val pin = pendingPairPin
@@ -85,6 +84,7 @@ class LanConnectionClient(
                 if (!pin.isNullOrEmpty()) {
                     Log.d(TAG, "Sending PAIR_REQUEST with PIN: $pin")
                     sendPairRequest(pin)
+                    onConnectionStateChanged(false, "Validando PIN de pareamento...")
                 } else if (!token.isNullOrEmpty()) {
                     Log.d(TAG, "Sending AUTH_CONNECT token...")
                     val authMsg = BaseMessage(
@@ -98,8 +98,8 @@ class LanConnectionClient(
                         )
                     )
                     webSocket.send(gson.toJson(authMsg))
+                    onConnectionStateChanged(false, "Autenticando com PC...")
                 }
-                onConnectionStateChanged(true, "Conectado")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -191,6 +191,20 @@ class LanConnectionClient(
                 width = width,
                 height = height
             )
+        )
+        sendJson(gson.toJson(msg))
+    }
+
+    fun setAuthenticated(authenticated: Boolean, details: String) {
+        isConnected = authenticated
+        onConnectionStateChanged(authenticated, details)
+    }
+
+    fun sendStreamStop(reason: String = "User stopped") {
+        val msg = BaseMessage(
+            type = MessageType.STREAM_STOP,
+            sourceId = deviceId,
+            payload = mapOf("reason" to reason)
         )
         sendJson(gson.toJson(msg))
     }

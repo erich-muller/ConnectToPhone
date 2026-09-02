@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ConnectToPhone - Linux Desktop Application Entry Point
-Supports Modern GNOME / Libadwaita UI, Background Daemon Mode, and GNOME Shell Extension IPC.
+Supports Modern GNOME / Libadwaita UI, Background Daemon Mode, Single-Instance IPC, and GNOME Shell Extension.
 """
 
 import sys
@@ -12,7 +12,7 @@ import threading
 import time
 import argparse
 
-# Ensure system-wide python packages are discoverable even inside a venv (PyGObject, Adw, Gtk4, cairo)
+# Ensure system-wide python packages are discoverable inside virtualenvs (PyGObject, Adw, Gtk4, cairo)
 for site_pkg in glob.glob('/usr/lib*/python3*/site-packages'):
     if site_pkg not in sys.path:
         sys.path.append(site_pkg)
@@ -44,6 +44,97 @@ if HAS_LIBADWAITA:
     from desktop.ui_adw.main_window import MainWindowAdw
 
 
+class ConnectToPhoneApp:
+    def __init__(self):
+        self.config = ConfigManager.get_instance()
+        self.device_id = self.config.get("device_id")
+
+        self.clipboard_service = None
+        self.stream_receiver = None
+        self.connection_manager = None
+        self.dbus_service = None
+        self.main_window = None
+
+    def initialize_core_services(self, app_instance=None):
+        """Initialize background network, clipboard, and D-Bus services once for primary instance."""
+        if self.connection_manager is not None:
+            return  # Already initialized
+
+        self.clipboard_service = ClipboardService(device_id=self.device_id)
+        self.clipboard_service.initialize()
+
+        self.stream_receiver = StreamReceiver(device_id=self.device_id)
+
+        self.connection_manager = ConnectionManager(
+            config_manager=self.config,
+            clipboard_service=self.clipboard_service,
+            stream_receiver=self.stream_receiver
+        )
+        self.connection_manager.start()
+
+        def open_window_action():
+            if HAS_LIBADWAITA and app_instance:
+                if self.main_window is None:
+                    self.main_window = MainWindowAdw(
+                        app=app_instance,
+                        config_manager=self.config,
+                        connection_manager=self.connection_manager,
+                        clipboard_service=self.clipboard_service
+                    )
+                self.main_window._update_device_ui()
+                self.main_window.set_visible(True)
+                self.main_window.present()
+                if self.connection_manager and self.connection_manager.state != "CONNECTED":
+                    self.connection_manager.trigger_discovery()
+
+        def open_mirror_action():
+            if self.main_window:
+                self.main_window._open_screen_mirror()
+            elif HAS_LIBADWAITA and app_instance:
+                open_window_action()
+                if self.main_window:
+                    self.main_window._open_screen_mirror()
+
+        def open_pair_action():
+            if self.main_window:
+                self.main_window._open_pair_dialog()
+            elif HAS_LIBADWAITA and app_instance:
+                open_window_action()
+                if self.main_window:
+                    self.main_window._open_pair_dialog()
+
+        def quit_daemon_action():
+            if HAS_LIBADWAITA and app_instance:
+                app_instance.quit()
+            else:
+                sys.exit(0)
+
+        self.open_window_action = open_window_action
+        self.open_mirror_action = open_mirror_action
+        self.open_pair_action = open_pair_action
+        self.quit_daemon_action = quit_daemon_action
+
+        self.dbus_service = DBusService(
+            connection_manager=self.connection_manager,
+            config_manager=self.config,
+            clipboard_service=self.clipboard_service,
+            on_open_window=open_window_action,
+            on_open_mirror=open_mirror_action,
+            on_open_pair=open_pair_action,
+            on_quit=quit_daemon_action
+        )
+        self.dbus_service.start()
+
+    def cleanup(self):
+        print("[App] Shutting down services...")
+        if self.clipboard_service:
+            self.clipboard_service.shutdown()
+        if self.dbus_service:
+            self.dbus_service.stop()
+        if self.connection_manager:
+            self.connection_manager.stop()
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="ConnectToPhone Linux Desktop Server")
     parser.add_argument("--minimized", "--daemon", action="store_true", help="Start background daemon without opening main window")
@@ -56,99 +147,47 @@ def parse_args():
 
 def main():
     args = parse_args()
-
-    # Load configuration
-    config = ConfigManager.get_instance()
-    device_id = config.get("device_id")
+    app_helper = ConnectToPhoneApp()
 
     if args.headless_check:
-        print(f"[SanityCheck] Device ID: {device_id}")
-        print(f"[SanityCheck] Device Name: {config.get('device_name')}")
+        print(f"[SanityCheck] Device ID: {app_helper.device_id}")
+        print(f"[SanityCheck] Device Name: {app_helper.config.get('device_name')}")
         print(f"[SanityCheck] Libadwaita available: {HAS_LIBADWAITA}")
         print("[SanityCheck] Core Services OK")
         return 0
 
-    # 1. Initialize Core Engine & Background Clipboard
-    clipboard_service = ClipboardService(device_id=device_id)
-    clipboard_service.initialize()
-
-    stream_receiver = StreamReceiver(device_id=device_id)
-
-    connection_manager = ConnectionManager(
-        config_manager=config,
-        clipboard_service=clipboard_service,
-        stream_receiver=stream_receiver
-    )
-    connection_manager.start()
-
-    main_window_holder = {"window": None}
-
-    def open_window_action():
-        if HAS_LIBADWAITA and app_instance:
-            if main_window_holder["window"] is None:
-                win = MainWindowAdw(
-                    app=app_instance,
-                    config_manager=config,
-                    connection_manager=connection_manager,
-                    clipboard_service=clipboard_service
-                )
-                main_window_holder["window"] = win
-            main_window_holder["window"].set_visible(True)
-            main_window_holder["window"].present()
-
-    def open_mirror_action():
-        if main_window_holder["window"]:
-            main_window_holder["window"]._open_screen_mirror()
-        elif HAS_LIBADWAITA and app_instance:
-            open_window_action()
-            if main_window_holder["window"]:
-                main_window_holder["window"]._open_screen_mirror()
-
-    def open_pair_action():
-        if main_window_holder["window"]:
-            main_window_holder["window"]._open_pair_dialog()
-        elif HAS_LIBADWAITA and app_instance:
-            open_window_action()
-            if main_window_holder["window"]:
-                main_window_holder["window"]._open_pair_dialog()
-
-    # 2. Start D-Bus Service (Allows GNOME Shell Extension to interact with daemon 24/7)
-    dbus_service = DBusService(
-        connection_manager=connection_manager,
-        config_manager=config,
-        clipboard_service=clipboard_service,
-        on_open_window=open_window_action,
-        on_open_mirror=open_mirror_action,
-        on_open_pair=open_pair_action
-    )
-    dbus_service.start()
-
-    # 3. Launch UI / Persistent Daemon (Libadwaita / GTK4)
     if HAS_LIBADWAITA:
         app_instance = Adw.Application(
             application_id="org.connecttophone.Desktop",
             flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE
         )
 
-        # Actions registered on Application
-        quit_act = Gio.SimpleAction.new("quit", None)
-        quit_act.connect("activate", lambda a, p: app_instance.quit())
-        app_instance.add_action(quit_act)
+        def on_startup(app):
+            # Only primary instance runs startup
+            app_helper.initialize_core_services(app_instance=app)
 
-        mirror_act = Gio.SimpleAction.new("mirror", None)
-        mirror_act.connect("activate", lambda a, p: open_mirror_action())
-        app_instance.add_action(mirror_act)
+            # Actions registered on Application
+            quit_act = Gio.SimpleAction.new("quit", None)
+            quit_act.connect("activate", lambda a, p: app.quit())
+            app.add_action(quit_act)
 
-        pair_act = Gio.SimpleAction.new("pair", None)
-        pair_act.connect("activate", lambda a, p: open_pair_action())
-        app_instance.add_action(pair_act)
+            mirror_act = Gio.SimpleAction.new("mirror", None)
+            mirror_act.connect("activate", lambda a, p: app_helper.open_mirror_action())
+            app.add_action(mirror_act)
 
-        open_win_act = Gio.SimpleAction.new("open_window", None)
-        open_win_act.connect("activate", lambda a, p: open_window_action())
-        app_instance.add_action(open_win_act)
+            pair_act = Gio.SimpleAction.new("pair", None)
+            pair_act.connect("activate", lambda a, p: app_helper.open_pair_action())
+            app.add_action(pair_act)
+
+            open_win_act = Gio.SimpleAction.new("open_window", None)
+            open_win_act.connect("activate", lambda a, p: app_helper.open_window_action())
+            app.add_action(open_win_act)
+
+            # Hold application so it keeps running in background when windows are closed
+            app.hold()
 
         def on_activate(app):
-            open_window_action()
+            app_helper.open_window_action()
 
         def on_command_line(app, cmd_line):
             args_list = cmd_line.get_arguments()
@@ -156,33 +195,26 @@ def main():
                 app.quit()
                 return 0
             if "--mirror" in args_list:
-                open_mirror_action()
+                app_helper.open_mirror_action()
                 return 0
             if "--pair" in args_list:
-                open_pair_action()
+                app_helper.open_pair_action()
                 return 0
             if not ("--minimized" in args_list or "--daemon" in args_list):
-                open_window_action()
+                app_helper.open_window_action()
             return 0
 
+        app_instance.connect("startup", on_startup)
         app_instance.connect("activate", on_activate)
         app_instance.connect("command-line", on_command_line)
-
-        # Hold application so it keeps running in background when windows are closed
-        app_instance.hold()
-
-        def cleanup_adw():
-            print("[App] Shutting down services...")
-            clipboard_service.shutdown()
-            dbus_service.stop()
-            connection_manager.stop()
 
         try:
             return app_instance.run(sys.argv)
         finally:
-            cleanup_adw()
+            app_helper.cleanup()
     else:
         # Fallback headless loop
+        app_helper.initialize_core_services()
         shutdown_event = threading.Event()
 
         def _sig_handler(sig, frame):
@@ -196,9 +228,7 @@ def main():
             while not shutdown_event.is_set():
                 time.sleep(1.0)
         finally:
-            clipboard_service.shutdown()
-            dbus_service.stop()
-            connection_manager.stop()
+            app_helper.cleanup()
         return 0
 
 
