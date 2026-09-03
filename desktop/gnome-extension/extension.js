@@ -44,12 +44,9 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _buildMenu() {
-        // 1. Device Info & Battery Section
+        // 1. Status Section (Only Battery, device name is already prominent in header)
         this._statusSection = new PopupMenu.PopupMenuSection();
         
-        this._deviceInfoItem = new PopupMenu.PopupMenuItem('Nenhum aparelho conectado', { reactive: false });
-        this._statusSection.addMenuItem(this._deviceInfoItem);
-
         this._batteryItem = new PopupMenu.PopupImageMenuItem('Bateria: --%', 'battery-level-100-symbolic', { reactive: false });
         this._statusSection.addMenuItem(this._batteryItem);
 
@@ -86,28 +83,30 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        // 4. Reconnect Button
-        this._reconnectItem = new PopupMenu.PopupImageMenuItem('Buscar Celular na Rede', 'network-wireless-signal-good-symbolic');
-        this._reconnectItem.connect('activate', () => {
-            this._extension.callDaemonMethod('ReconnectDevice');
-        });
-        this.menu.addMenuItem(this._reconnectItem);
-
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // 5. Daemon Toggle Item
-        this._daemonToggleItem = new PopupMenu.PopupImageMenuItem('Encerrar Serviço em 2º Plano', 'process-stop-symbolic');
+        // 4. Daemon Toggle Item (Activate / Deactivate background service)
+        this._daemonToggleItem = new PopupMenu.PopupImageMenuItem('Desativar ConnectToPhone', 'process-stop-symbolic');
         this._daemonToggleItem.connect('activate', () => {
-            this._extension.stopDaemon();
+            if (this._extension.isDaemonRunning()) {
+                this._extension.stopDaemon();
+            } else {
+                this._extension.startDaemon();
+            }
         });
         this.menu.addMenuItem(this._daemonToggleItem);
     }
 
     _onMainToggleClicked() {
-        if (!this._extension.isDaemonRunning()) {
+        if (this._extension.isDaemonRunning()) {
+            // Turning OFF: Stop daemon and all processes
             this.checked = false;
             this.title = 'ConnectToPhone';
-            this.subtitle = 'Iniciando em 2º plano...';
+            this.subtitle = 'Desativado';
+            this._extension.stopDaemon();
+        } else {
+            // Turning ON: Start daemon and background processes
+            this.checked = true;
+            this.title = 'ConnectToPhone';
+            this.subtitle = 'Ativando...';
             this._extension.startDaemon();
 
             let attempts = 0;
@@ -122,16 +121,6 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
                 }
                 return GLib.SOURCE_CONTINUE;
             });
-        } else {
-            // Daemon is active
-            if (this._isConnected) {
-                // Connected: clicking main toggle disconnects device
-                this._extension.callDaemonMethod('DisconnectDevice');
-            } else {
-                // Disconnected: clicking main toggle triggers reconnect burst and opens window
-                this.subtitle = 'Buscando celular...';
-                this._extension.callDaemonMethod('ReconnectDevice');
-            }
         }
     }
 
@@ -145,10 +134,10 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
         const isCharging = status.is_charging || false;
 
         this._isConnected = isConnected;
-        this.checked = isConnected;
+        this.checked = daemonRunning;
 
         if (daemonRunning) {
-            this._daemonToggleItem.label.text = 'Encerrar Serviço em 2º Plano';
+            this._daemonToggleItem.label.text = 'Desativar ConnectToPhone';
             this._daemonToggleItem.setIcon('process-stop-symbolic');
 
             if (isConnected && status.device_name && status.device_name !== 'Nenhum dispositivo') {
@@ -157,7 +146,6 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
                 this.iconName = 'phone-symbolic';
 
                 this.menu.setHeader('phone-symbolic', devName, 'Conectado via Wi-Fi');
-                this._deviceInfoItem.label.text = `${devName} (${status.device_model || 'Android'})`;
                 
                 let batteryIcon = 'battery-level-100-symbolic';
                 if (isCharging) {
@@ -171,27 +159,26 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
                 }
                 this._batteryItem.setIcon(batteryIcon);
                 this._batteryItem.label.text = `Bateria: ${battery}% ${isCharging ? '(Carregando)' : ''}`;
+                this._batteryItem.visible = true;
                 this._mirrorItem.setSensitive(true);
             } else {
                 this.title = 'ConnectToPhone';
                 this.subtitle = 'Aguardando celular...';
                 this.iconName = 'phone-symbolic';
 
-                this.menu.setHeader('phone-symbolic', 'ConnectToPhone', 'Serviço ativo, aguardando conexão...');
-                this._deviceInfoItem.label.text = 'Aguardando celular na rede local...';
-                this._batteryItem.label.text = 'Bateria: --%';
+                this.menu.setHeader('phone-symbolic', 'ConnectToPhone', 'Aguardando celular na rede...');
+                this._batteryItem.visible = false;
                 this._mirrorItem.setSensitive(false);
             }
         } else {
-            this.title = 'Celular';
+            this.title = 'ConnectToPhone';
             this.subtitle = 'Desativado';
             this.iconName = 'phone-symbolic';
 
             this.menu.setHeader('phone-symbolic', 'ConnectToPhone', 'Serviço desativado');
-            this._deviceInfoItem.label.text = 'Clique para ativar em segundo plano';
-            this._batteryItem.label.text = 'Bateria: --%';
+            this._batteryItem.visible = false;
             this._mirrorItem.setSensitive(false);
-            this._daemonToggleItem.label.text = 'Iniciar Serviço em 2º Plano';
+            this._daemonToggleItem.label.text = 'Ativar ConnectToPhone';
             this._daemonToggleItem.setIcon('media-playback-start-symbolic');
         }
 
@@ -417,7 +404,7 @@ export default class ConnectToPhoneExtension extends Extension {
                         proxy.call_finish(res);
                     } catch (e) {
                         console.log(`[ConnectToPhone] Error calling ${methodName}: ${e}`);
-                        const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck');
+                        const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck' || methodName === 'Quit' || methodName === 'DisconnectDevice');
                         if (!isPassive) {
                             this._launchAppProcess(methodName);
                         }
@@ -425,7 +412,7 @@ export default class ConnectToPhoneExtension extends Extension {
                 }
             );
         } else {
-            const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck');
+            const isPassive = (methodName === 'ReportClipboardText' || methodName === 'ReportClipboardImage' || methodName === 'TriggerClipboardCheck' || methodName === 'Quit' || methodName === 'DisconnectDevice');
             if (!isPassive) {
                 this._launchAppProcess(methodName);
             }
