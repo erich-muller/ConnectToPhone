@@ -102,37 +102,10 @@ class ClipboardService(QObject if HAS_PYQT else object):
             except Exception:
                 pass
 
-    def _is_data_control_supported(self) -> bool:
-        """Check if the current Wayland compositor supports wlr-data-control for wl-paste --watch."""
-        if not self._wl_paste_bin:
-            return False
-        # Mutter (GNOME Shell) does NOT support wlr-data-control.
-        # Starting wl-paste --watch on GNOME causes it to crash in a loop and spawn dock icons.
-        xdg_desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
-        session = os.environ.get("DESKTOP_SESSION", "").upper()
-        if "GNOME" in xdg_desktop or "GNOME" in session:
-            return False
-        try:
-            proc = subprocess.Popen(
-                [self._wl_paste_bin, "--watch", "true"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE
-            )
-            try:
-                _, stderr = proc.communicate(timeout=0.3)
-                if proc.returncode != 0:
-                    return False
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                return True
-        except Exception:
-            return False
-        return False
-
     def initialize(self):
         """Hook into Wayland background socket watcher, screenshot folder watcher, and native GDK clipboard."""
-        # 1. Background Wayland Watcher (only for wlroots compositors like Sway/Hyprland; NEVER on GNOME)
-        if self._is_data_control_supported():
+        # 1. Background Wayland Watcher
+        if self._wl_paste_bin:
             self._start_wayland_watcher()
 
         # 2. Native GDK in-process listener when GTK display is available
@@ -147,6 +120,8 @@ class ClipboardService(QObject if HAS_PYQT else object):
 
             # Monitor GNOME Screenshot directories directly with inotify (Gio.FileMonitor)
             self._setup_screenshot_folder_watcher()
+            # Periodic 2s fallback check
+            GLib.timeout_add_seconds(2, self._periodic_clipboard_check)
 
         # 3. Qt listener if active
         if HAS_PYQT:
@@ -156,7 +131,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 if self._clipboard:
                     self._clipboard.dataChanged.connect(self._on_qt_clipboard_changed)
 
-        print("[Clipboard] Clipboard service initialized (Screenshot Folder Monitor Active)")
+        print("[Clipboard] Clipboard service initialized (Background Watcher & Screenshot Folder Monitor Active)")
 
     def _setup_screenshot_folder_watcher(self):
         """Monitor GNOME screenshot directories with inotify (Gio.FileMonitor) for instant sync."""
@@ -218,7 +193,9 @@ class ClipboardService(QObject if HAS_PYQT else object):
         return False
 
     def _periodic_clipboard_check(self):
-        return GLib.SOURCE_REMOVE
+        if self._enabled:
+            self._check_and_process_system_clipboard()
+        return GLib.SOURCE_CONTINUE
 
     def shutdown(self):
         """Clean shutdown."""
@@ -374,7 +351,6 @@ class ClipboardService(QObject if HAS_PYQT else object):
                     stderr=subprocess.DEVNULL
                 ))
                 self._watcher_procs = procs
-                start_time = time.time()
 
                 while self._watcher_running and any(p.poll() is None for p in procs):
                     if self._server_sock:
@@ -394,18 +370,9 @@ class ClipboardService(QObject if HAS_PYQT else object):
                         p.terminate()
                     except Exception:
                         pass
-
-                # If procs died in less than 1.5s, data-control protocol is not working; abort permanently
-                if time.time() - start_time < 1.5:
-                    print("[Clipboard] wl-paste --watch exited immediately. Data-control not supported. Aborting watcher.")
-                    self._watcher_running = False
-                    break
-
                 time.sleep(1.0)
             except Exception as e:
-                print(f"[Clipboard] Watcher loop error: {e}")
-                self._watcher_running = False
-                break
+                time.sleep(1.5)
 
     def _check_and_process_system_clipboard(self):
         if not self._enabled or time.time() < self._ignore_until or not self._wl_paste_bin:
