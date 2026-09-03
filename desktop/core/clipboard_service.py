@@ -120,8 +120,6 @@ class ClipboardService(QObject if HAS_PYQT else object):
 
             # Monitor GNOME Screenshot directories directly with inotify (Gio.FileMonitor)
             self._setup_screenshot_folder_watcher()
-            # Periodic 2s fallback check
-            GLib.timeout_add_seconds(2, self._periodic_clipboard_check)
 
         # 3. Qt listener if active
         if HAS_PYQT:
@@ -193,9 +191,9 @@ class ClipboardService(QObject if HAS_PYQT else object):
         return False
 
     def _periodic_clipboard_check(self):
-        if self._enabled:
+        if self._enabled and not self._is_gnome_wayland():
             self._check_and_process_system_clipboard()
-        return GLib.SOURCE_CONTINUE
+        return GLib.SOURCE_REMOVE
 
     def shutdown(self):
         """Clean shutdown."""
@@ -312,9 +310,49 @@ class ClipboardService(QObject if HAS_PYQT else object):
     # -------------------------------------------------------------------------
     # Wayland Background Watcher (Socket IPC triggered on copy event only)
     # -------------------------------------------------------------------------
+    def _is_gnome_wayland(self) -> bool:
+        """Return True if running inside a GNOME Wayland session."""
+        desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+        session = os.environ.get("DESKTOP_SESSION", "").upper()
+        is_wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
+        return is_wayland and ("GNOME" in desktop or "GNOME" in session)
+
+    def _is_wl_watch_supported(self) -> bool:
+        """Check if wl-paste --watch is actually supported by the compositor."""
+        if not self._wl_paste_bin:
+            return False
+        # GNOME Wayland (Mutter) does not implement wlr-data-control.
+        # Running wl-paste pops up a tiny window that flashes the dock.
+        # GNOME Shell extension handles clipboard synchronization natively.
+        if self._is_gnome_wayland():
+            return False
+
+        try:
+            p = subprocess.Popen(
+                [self._wl_paste_bin, "--watch", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            time.sleep(0.1)
+            poll = p.poll()
+            if poll is not None:
+                return False
+            p.terminate()
+            try:
+                p.wait(timeout=0.2)
+            except Exception:
+                p.kill()
+            return True
+        except Exception:
+            return False
+
     def _start_wayland_watcher(self):
         if self._watcher_running or not self._wl_paste_bin:
             return
+        if not self._is_wl_watch_supported():
+            print("[Clipboard] wl-paste --watch not supported on this compositor (GNOME Mutter uses native Shell extension). Watcher skipped.")
+            return
+
         self._watcher_running = True
         self._watcher_procs = []
 
@@ -335,6 +373,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
         self._watcher_thread.start()
 
     def _wayland_socket_listen_loop(self):
+        consecutive_failures = 0
         while self._watcher_running:
             try:
                 procs = []
@@ -352,6 +391,22 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 ))
                 self._watcher_procs = procs
 
+                time.sleep(0.2)
+                if any(p.poll() is not None for p in procs):
+                    consecutive_failures += 1
+                    for p in procs:
+                        try:
+                            p.terminate()
+                        except Exception:
+                            pass
+                    if consecutive_failures >= 3:
+                        print("[Clipboard] wl-paste watcher failed repeatedly; aborting watcher loop to prevent process cycling.")
+                        self._watcher_running = False
+                        break
+                    time.sleep(2.0)
+                    continue
+
+                consecutive_failures = 0
                 while self._watcher_running and any(p.poll() is None for p in procs):
                     if self._server_sock:
                         try:

@@ -296,13 +296,25 @@ export default class ConnectToPhoneExtension extends Extension {
                 if (selection) {
                     this._selectionId = selection.connect('owner-changed', (sel, selType, source) => {
                         if (selType === Meta.SelectionType.SELECTION_CLIPBOARD) {
-                            // 1. Tell daemon to check clipboard (handles images, screenshots, and text)
-                            this.callDaemonMethod('TriggerClipboardCheck');
-
-                            // 2. Also pass text directly if available
-                            St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (cb, text) => {
-                                if (text && text.length > 0) {
+                            const clipboard = St.Clipboard.get_default();
+                            // 1. Check for text directly via GNOME Shell St.Clipboard (native in-process)
+                            clipboard.get_text(St.ClipboardType.CLIPBOARD, (cb, text) => {
+                                if (text && text.trim().length > 0) {
                                     this.callDaemonMethod('ReportClipboardText', new GLib.Variant('(s)', [text]));
+                                } else {
+                                    // 2. If no text, check for image data (native in-process, zero external windows/flashes)
+                                    try {
+                                        clipboard.get_content(St.ClipboardType.CLIPBOARD, 'image/png', (cb2, bytes) => {
+                                            if (bytes && bytes.get_size() > 64) {
+                                                const b64 = GLib.base64_encode(bytes.get_data());
+                                                if (b64) {
+                                                    this.callDaemonMethod('ReportClipboardImage', new GLib.Variant('(s)', [b64]));
+                                                }
+                                            }
+                                        });
+                                    } catch (err) {
+                                        // get_content not supported on this version
+                                    }
                                 }
                             });
                         }

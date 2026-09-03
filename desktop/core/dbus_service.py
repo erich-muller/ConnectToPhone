@@ -6,6 +6,7 @@ and single-instance desktop control.
 
 import json
 import time
+import base64
 from typing import Optional, Dict, Any, Callable
 
 try:
@@ -216,7 +217,8 @@ class DBusService:
                 invocation.return_value(None)
 
             elif method_name == "TriggerClipboardCheck":
-                GLib.idle_add(self.clipboard._check_and_process_system_clipboard)
+                if hasattr(self.clipboard, "_is_gnome_wayland") and not self.clipboard._is_gnome_wayland():
+                    GLib.idle_add(self.clipboard._check_and_process_system_clipboard)
                 invocation.return_value(None)
 
             elif method_name == "ToggleClipboardSync":
@@ -249,10 +251,16 @@ class DBusService:
             elif method_name == "ReportClipboardImage":
                 b64_data, = parameters.unpack()
                 if b64_data and self.clipboard._sync_images:
-                    img_hash = self.clipboard._compute_hash(b64_data.encode('utf-8'))
+                    try:
+                        raw_bytes = base64.b64decode(b64_data)
+                        img_hash = self.clipboard._compute_hash(raw_bytes)
+                    except Exception:
+                        raw_bytes = b""
+                        img_hash = self.clipboard._compute_hash(b64_data.encode('utf-8'))
+
                     if img_hash != self.clipboard._last_content_hash and time.time() >= self.clipboard._ignore_until:
                         self.clipboard._last_content_hash = img_hash
-                        preview = "Imagem capturada"
+                        preview = f"Imagem capturada ({len(raw_bytes)//1024} KB)" if raw_bytes else "Imagem capturada"
                         item = ClipboardItem(
                             item_type="image",
                             content=b64_data,
