@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "minimize_to_tray": True,
     "show_notifications": True,
     "stream_quality": "high", # high, medium, low
+    "stream_quality": "720p", # max, 1080p, 720p, 480p, 360p
     "stream_fps": 30,
     "paired_devices": {} # {device_id: {"name": "...", "auth_token": "...", "last_ip": "..."}}
 }

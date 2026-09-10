@@ -219,6 +219,23 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.sync_img_row.connect("notify::active", self._on_sync_img_toggled)
         pref_group.add(self.sync_img_row)
 
+        # Mirror Quality ComboRow
+        self.quality_row = Adw.ComboRow()
+        self.quality_row.set_title("Qualidade do Espelhamento")
+        self.quality_row.set_subtitle("Resolução transmitida pelo celular (Máxima 2K-4K, 1080p, 720p, 480p, 360p)")
+
+        from desktop.core.connection_manager import QUALITY_PROFILES, normalize_quality_key
+        self._quality_keys = list(QUALITY_PROFILES.keys())
+        labels = [QUALITY_PROFILES[k]["label"] for k in self._quality_keys]
+        str_list = Gtk.StringList.new(labels)
+        self.quality_row.set_model(str_list)
+
+        curr_q = normalize_quality_key(self.config.get("stream_quality", "720p"))
+        curr_idx = self._quality_keys.index(curr_q) if curr_q in self._quality_keys else 2
+        self.quality_row.set_selected(curr_idx)
+        self.quality_row.connect("notify::selected", self._on_quality_row_selected)
+        pref_group.add(self.quality_row)
+
         main_box.append(pref_group)
 
         # ----------------------------------------------------
@@ -259,6 +276,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
             self.conn.device_status_updated.connect(lambda st: GLib.idle_add(self._on_device_status_updated, st))
             self.conn.paired_success.connect(lambda did, name: GLib.idle_add(self._on_paired_success, did, name))
             self.conn.notification_requested.connect(lambda t, m: GLib.idle_add(self.show_toast, f"{t}: {m}"))
+            self.conn.quality_changed.connect(lambda k: GLib.idle_add(self._on_quality_changed_externally, k))
         except Exception as e:
             print(f"[MainWin] Signal hook error: {e}")
 
@@ -334,6 +352,21 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.config.set("sync_images", val)
         self.clipboard.set_sync_images(val)
 
+    def _on_quality_row_selected(self, row, gparam):
+        idx = row.get_selected()
+        if hasattr(self, "_quality_keys") and 0 <= idx < len(self._quality_keys):
+            key = self._quality_keys[idx]
+            if self.config.get("stream_quality") != key:
+                self.conn.set_stream_quality(key)
+
+    def _on_quality_changed_externally(self, key: str):
+        from desktop.core.connection_manager import normalize_quality_key
+        k = normalize_quality_key(key)
+        if hasattr(self, "_quality_keys") and k in self._quality_keys:
+            idx = self._quality_keys.index(k)
+            if self.quality_row.get_selected() != idx:
+                self.quality_row.set_selected(idx)
+
     def _on_history_changed(self, history: List[ClipboardItem]):
         # Safely remove previous rows
         if hasattr(self, "_history_rows"):
@@ -397,13 +430,13 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.mirror_window.prepare_for_stream(name)
         self.mirror_window.set_visible(True)
         self.mirror_window.present()
-        self.conn.request_start_screen_mirror(width=720, height=1280, fps=30)
+        self.conn.request_start_screen_mirror()
 
     def _queue_frame_for_render(self, frame_bytes: bytes, stats: Dict[str, Any]):
         self._pending_frame = (frame_bytes, stats)
         if not self._render_scheduled:
             self._render_scheduled = True
-            GLib.idle_add(self._render_pending_frame)
+            GLib.idle_add(self._render_pending_frame, priority=GLib.PRIORITY_HIGH_IDLE)
 
     def _render_pending_frame(self):
         self._render_scheduled = False

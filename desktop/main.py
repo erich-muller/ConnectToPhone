@@ -141,12 +141,15 @@ def parse_args():
     parser.add_argument("--mirror", action="store_true", help="Open screen mirroring window directly")
     parser.add_argument("--pair", action="store_true", help="Open pairing dialog directly")
     parser.add_argument("--quit", action="store_true", help="Stop running ConnectToPhone daemon")
+    parser.add_argument("--cairo", action="store_true", help="Force software Cairo rendering in GTK4 (useful for screen capture troubleshooting)")
     parser.add_argument("--headless-check", action="store_true", help="Run sanity check and exit")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    if getattr(args, "cairo", False):
+        os.environ["GSK_RENDERER"] = "cairo"
     app_helper = ConnectToPhoneApp()
 
     if args.headless_check:

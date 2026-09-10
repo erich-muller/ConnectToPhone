@@ -330,6 +330,7 @@ class MainWindow(QMainWindow):
             self.mirror_window.show()
 
         self.conn.request_start_screen_mirror(width=720, height=1280, fps=30)
+        self.conn.request_start_screen_mirror()
 
     def closeEvent(self, event):
         """Minimize to system tray instead of terminating background services."""

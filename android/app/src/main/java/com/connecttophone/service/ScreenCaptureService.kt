@@ -43,6 +43,17 @@ class ScreenCaptureService : Service() {
         var isRunning = false
             private set
 
+        var currentMaxDimension: Int = 1280
+        var currentJpegQuality: Int = 75
+        var currentInstance: ScreenCaptureService? = null
+            private set
+
+        fun updateQuality(maxDimension: Int, jpegQuality: Int) {
+            currentMaxDimension = maxDimension
+            currentJpegQuality = jpegQuality
+            currentInstance?.applyQualityChange(maxDimension, jpegQuality)
+        }
+
         fun getStartIntent(context: Context, resultCode: Int, data: Intent): Intent {
             return Intent(context, ScreenCaptureService::class.java).apply {
                 putExtra(EXTRA_RESULT_CODE, resultCode)
@@ -74,9 +85,24 @@ class ScreenCaptureService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        currentInstance = this
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         isRunning = true
+    }
+
+    fun applyQualityChange(maxDimension: Int, jpegQuality: Int) {
+        backgroundHandler?.post {
+            currentMaxDimension = maxDimension
+            currentJpegQuality = jpegQuality
+            val changed = calculateDimensions()
+            if (isRunning && virtualDisplay != null) {
+                Log.d(TAG, "Dynamic quality change applied: ${screenWidth}x${screenHeight}, JPEG=$currentJpegQuality (changed=$changed)")
+                setupImageReaderAndBuffers()
+                virtualDisplay?.resize(screenWidth, screenHeight, screenDensity)
+                virtualDisplay?.surface = imageReader?.surface
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -132,16 +158,22 @@ class ScreenCaptureService : Service() {
         val maxDimension = 1280
         val scale = if (maxOf(realW, realH) > maxDimension) {
             maxDimension.toFloat() / maxOf(realW, realH)
+        val maxDim = currentMaxDimension
+        val scale = if (maxDim > 0 && maxOf(realW, realH) > maxDim) {
+            maxDim.toFloat() / maxOf(realW, realH)
         } else 1.0f
 
         val newW = (((realW * scale).toInt() / 8) * 8).coerceAtLeast(320)
         val newH = (((realH * scale).toInt() / 8) * 8).coerceAtLeast(480)
+        val newW = (((realW * scale).toInt() / 8) * 8).coerceAtLeast(160)
+        val newH = (((realH * scale).toInt() / 8) * 8).coerceAtLeast(160)
 
         val changed = (newW != screenWidth || newH != screenHeight)
         screenWidth = newW
         screenHeight = newH
 
         Log.d(TAG, "Screen metrics: ${realW}x${realH} -> Capture resolution: ${screenWidth}x${screenHeight} (density=$screenDensity, changed=$changed)")
+        Log.d(TAG, "Screen metrics: ${realW}x${realH} -> Capture resolution: ${screenWidth}x${screenHeight} (density=$screenDensity, maxDim=$maxDim, changed=$changed)")
         return changed
     }
 
@@ -278,6 +310,7 @@ class ScreenCaptureService : Service() {
 
             outStream.reset()
             bmp.compress(Bitmap.CompressFormat.JPEG, 75, outStream)
+            bmp.compress(Bitmap.CompressFormat.JPEG, currentJpegQuality, outStream)
             val jpegBytes = outStream.toByteArray()
             val base64Frame = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
 
@@ -285,6 +318,7 @@ class ScreenCaptureService : Service() {
             frameCount++
             if (frameCount == 1L || frameCount % 60L == 0L) {
                 Log.d(TAG, "Sent frame #$frameCount (${jpegBytes.size} bytes, ${screenWidth}x${screenHeight})")
+                Log.d(TAG, "Sent frame #$frameCount (${jpegBytes.size} bytes, ${screenWidth}x${screenHeight}, Q=$currentJpegQuality)")
             }
 
         } catch (e: Exception) {
@@ -314,6 +348,9 @@ class ScreenCaptureService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        if (currentInstance == this) {
+            currentInstance = null
+        }
 
         try {
             displayListener?.let { displayManager?.unregisterDisplayListener(it) }

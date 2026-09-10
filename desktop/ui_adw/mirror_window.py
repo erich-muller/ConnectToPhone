@@ -1,7 +1,7 @@
 """
 Screen Mirror Window for ConnectToPhone (GTK4 / Libadwaita).
-Hardware-accelerated rendering with Gtk.Picture, touch/mouse/gesture relay, and keyboard relay.
-Includes Minimize, Maximize, and Close titlebar buttons without emojis.
+Hardware-accelerated rendering with Gtk.Picture inside Gtk.Stack, solid opaque canvas,
+touch/mouse/gesture relay, keyboard relay, dynamic resolution switching, and clean UI without FPS clutter.
 """
 
 import time
@@ -9,11 +9,13 @@ import math
 from typing import Optional, Dict, Any, Tuple
 
 import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
-gi.require_version('Gdk', '4.0')
-gi.require_version('GLib', '2.0')
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+gi.require_version("Gdk", "4.0")
+gi.require_version("GLib", "2.0")
 from gi.repository import Gtk, Adw, Gdk, GLib
+
+from desktop.core.connection_manager import QUALITY_PROFILES, normalize_quality_key
 
 
 class MirrorWindowAdw(Adw.ApplicationWindow):
@@ -32,7 +34,29 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
         self.set_default_size(400, 750)
         self.set_size_request(280, 480)
 
+        self._apply_css()
         self._setup_ui()
+        self._hook_events()
+
+    def _apply_css(self):
+        css_provider = Gtk.CssProvider()
+        css = """
+        .mirror-black-canvas {
+            background-color: #000000;
+        }
+        .quality-btn {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+        """
+        css_provider.load_from_data(css.encode("utf-8"))
+        display = Gdk.Display.get_default()
+        if display:
+            Gtk.StyleContext.add_provider_for_display(
+                display,
+                css_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
 
     def _setup_ui(self):
         toolbar_view = Adw.ToolbarView()
@@ -59,12 +83,29 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
 
         header_bar.set_title_widget(title_box)
 
-        # Stats Badge
-        self.stats_badge = Gtk.Label(label="Aguardando...")
-        self.stats_badge.add_css_class("caption")
-        self.stats_badge.add_css_class("card")
-        self.stats_badge.set_margin_end(6)
-        header_bar.pack_end(self.stats_badge)
+        # Quality Selector Button in HeaderBar (Replaces FPS display)
+        self.quality_btn = Gtk.MenuButton()
+        self.quality_btn.set_tooltip_text("Qualidade e Resolução do Espelhamento")
+        self.quality_btn.add_css_class("flat")
+        self.quality_btn.add_css_class("quality-btn")
+        self.quality_btn.set_margin_end(6)
+
+        q_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        q_icon = Gtk.Image.new_from_icon_name("video-single-display-symbolic")
+        q_btn_box.append(q_icon)
+
+        self.quality_btn_label = Gtk.Label(label="720p")
+        self.quality_btn_label.add_css_class("caption")
+        self.quality_btn_label.add_css_class("bold")
+        q_btn_box.append(self.quality_btn_label)
+
+        arrow_icon = Gtk.Image.new_from_icon_name("pan-down-symbolic")
+        arrow_icon.set_pixel_size(10)
+        q_btn_box.append(arrow_icon)
+
+        self.quality_btn.set_child(q_btn_box)
+        self._setup_quality_popover()
+        header_bar.pack_end(self.quality_btn)
 
         # Fullscreen Toggle Button
         fs_btn = Gtk.Button()
@@ -73,25 +114,48 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
         fs_btn.connect("clicked", self._toggle_fullscreen)
         header_bar.pack_end(fs_btn)
 
-        # Main Container (Overlay with Placeholder Label and Video Picture)
-        overlay = Gtk.Overlay()
-        toolbar_view.set_content(overlay)
+        # Main Stack Container (solid, artifact-free rendering)
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.stack.set_transition_duration(150)
+        toolbar_view.set_content(self.stack)
 
-        # Placeholder label
-        self.placeholder_label = Gtk.Label(label="Aguardando transmissão de tela do celular...\n(Autorize a captura no aparelho se solicitado)")
+        # Page 1: Placeholder page
+        placeholder_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        placeholder_box.set_valign(Gtk.Align.CENTER)
+        placeholder_box.set_halign(Gtk.Align.CENTER)
+        placeholder_box.set_margin_start(24)
+        placeholder_box.set_margin_end(24)
+
+        phone_icon = Gtk.Image.new_from_icon_name("phone-symbolic")
+        phone_icon.set_pixel_size(56)
+        phone_icon.add_css_class("dim-label")
+        placeholder_box.append(phone_icon)
+
+        self.placeholder_label = Gtk.Label(
+            label="Aguardando transmissão de tela do celular...\n(Autorize a captura no aparelho se solicitado)"
+        )
         self.placeholder_label.set_justify(Gtk.Justification.CENTER)
         self.placeholder_label.add_css_class("dim-label")
-        self.placeholder_label.set_valign(Gtk.Align.CENTER)
-        self.placeholder_label.set_halign(Gtk.Align.CENTER)
-        overlay.set_child(self.placeholder_label)
+        placeholder_box.append(self.placeholder_label)
 
-        # Hardware-accelerated Video Picture
+        self.stack.add_named(placeholder_box, "placeholder")
+
+        # Page 2: Opaque Video Box (always 100% solid black background to prevent WebRTC/Meet DMA-BUF alpha artifacts)
+        video_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        video_box.add_css_class("mirror-black-canvas")
+        video_box.set_vexpand(True)
+        video_box.set_hexpand(True)
+
         self.video_picture = Gtk.Picture()
         self.video_picture.set_content_fit(Gtk.ContentFit.CONTAIN)
         self.video_picture.set_can_shrink(True)
         self.video_picture.set_vexpand(True)
         self.video_picture.set_hexpand(True)
-        overlay.add_overlay(self.video_picture)
+        video_box.append(self.video_picture)
+
+        self.stack.add_named(video_box, "video")
+        self.stack.set_visible_child_name("placeholder")
 
         # Click / Tap / Drag Gestures
         click_gesture = Gtk.GestureClick()
@@ -114,19 +178,77 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
 
         self.connect("close-request", self._on_close_requested)
 
+    def _setup_quality_popover(self):
+        popover = Gtk.Popover()
+        popover_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        popover_box.set_margin_top(10)
+        popover_box.set_margin_bottom(10)
+        popover_box.set_margin_start(10)
+        popover_box.set_margin_end(10)
+
+        header = Gtk.Label(label="Qualidade do Espelhamento")
+        header.add_css_class("heading")
+        header.set_halign(Gtk.Align.START)
+        header.set_margin_bottom(6)
+        popover_box.append(header)
+
+        current_quality = normalize_quality_key(self.conn.config.get("stream_quality", "720p"))
+        self._update_quality_button_label(current_quality)
+
+        self._quality_check_buttons = {}
+        first_radio = None
+
+        for key, profile in QUALITY_PROFILES.items():
+            btn = Gtk.CheckButton(label=profile["label"])
+            if first_radio is None:
+                first_radio = btn
+            else:
+                btn.set_group(first_radio)
+
+            if key == current_quality:
+                btn.set_active(True)
+
+            btn.connect("toggled", self._on_quality_toggled, key, popover)
+            popover_box.append(btn)
+            self._quality_check_buttons[key] = btn
+
+        popover.set_child(popover_box)
+        self.quality_btn.set_popover(popover)
+
+    def _on_quality_toggled(self, check_btn, key: str, popover: Gtk.Popover):
+        if check_btn.get_active():
+            self._update_quality_button_label(key)
+            self.conn.set_stream_quality(key)
+            popover.popdown()
+
+    def _update_quality_button_label(self, key: str):
+        k = normalize_quality_key(key)
+        profile = QUALITY_PROFILES.get(k, QUALITY_PROFILES["720p"])
+        self.quality_btn_label.set_label(profile["short_label"])
+
+    def _hook_events(self):
+        self.conn.quality_changed.connect(
+            lambda k: GLib.idle_add(self._on_quality_changed_externally, k)
+        )
+
+    def _on_quality_changed_externally(self, key: str):
+        k = normalize_quality_key(key)
+        self._update_quality_button_label(k)
+        btn = self._quality_check_buttons.get(k)
+        if btn and not btn.get_active():
+            btn.set_active(True)
+
     def prepare_for_stream(self, device_name: str = "Celular"):
         self.set_title(f"Espelhamento de Tela — {device_name}")
         self.title_label.set_label(f"Espelhando: {device_name}")
         self.placeholder_label.set_label("Aguardando transmissão de tela do celular...\n(Autorize a captura no aparelho se solicitado)")
-        self.placeholder_label.set_visible(True)
-        self.stats_badge.set_label("Aguardando...")
+        self.stack.set_visible_child_name("placeholder")
 
     def on_stream_stopped(self, reason: str = "Transmissão encerrada"):
         self._current_texture = None
         self.video_picture.set_paintable(None)
         self.placeholder_label.set_label(f"Transmissão de tela encerrada.\n({reason})")
-        self.placeholder_label.set_visible(True)
-        self.stats_badge.set_label("Parado")
+        self.stack.set_visible_child_name("placeholder")
 
     def update_frame_from_bytes(self, img_bytes: bytes, stats: Dict[str, Any]):
         try:
@@ -134,7 +256,9 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
             texture = Gdk.Texture.new_from_bytes(glib_bytes)
             self._current_texture = texture
             self.video_picture.set_paintable(texture)
-            self.placeholder_label.set_visible(False)
+
+            if self.stack.get_visible_child_name() != "video":
+                self.stack.set_visible_child_name("video")
 
             w = texture.get_width()
             h = texture.get_height()
@@ -148,9 +272,6 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
                     else:
                         self.set_default_size(int(700 * new_aspect), 740)
 
-            fps = stats.get("fps", 0)
-            res = stats.get("resolution", "")
-            self.stats_badge.set_label(f"{fps} FPS • {res}")
         except Exception as e:
             print(f"[Mirror] Error updating frame: {e}")
 

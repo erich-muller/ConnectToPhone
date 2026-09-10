@@ -21,6 +21,7 @@ object MessageType {
     const val STREAM_START_RESP = "STREAM_START_RESP"
     const val STREAM_STOP = "STREAM_STOP"
     const val STREAM_FRAME = "STREAM_FRAME"
+    const val STREAM_QUALITY_REQ = "STREAM_QUALITY_REQ"
 
     const val INPUT_TOUCH = "INPUT_TOUCH"
     const val INPUT_KEY = "INPUT_KEY"

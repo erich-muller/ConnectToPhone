@@ -258,8 +258,29 @@ class CompanionService : Service() {
                 val intent = Intent(this, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     putExtra("ACTION_START_SCREEN_CAPTURE", true)
+                val maxDim = payload.get("max_dimension")?.asInt ?: 1280
+                val jpegQ = payload.get("jpeg_quality")?.asInt ?: 75
+                ScreenCaptureService.currentMaxDimension = maxDim
+                ScreenCaptureService.currentJpegQuality = jpegQ
+
+                if (ScreenCaptureService.isRunning) {
+                    Log.d(TAG, "Screen mirror already running. Updating quality to maxDim=$maxDim, Q=$jpegQ")
+                    ScreenCaptureService.updateQuality(maxDim, jpegQ)
+                } else {
+                    Log.d(TAG, "Screen mirror requested by PC (maxDim=$maxDim, Q=$jpegQ)! Launching MainActivity for permission...")
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("ACTION_START_SCREEN_CAPTURE", true)
+                    }
+                    startActivity(intent)
                 }
                 startActivity(intent)
+            }
+            MessageType.STREAM_QUALITY_REQ -> {
+                val maxDim = payload.get("max_dimension")?.asInt ?: 1280
+                val jpegQ = payload.get("jpeg_quality")?.asInt ?: 75
+                Log.d(TAG, "Dynamic stream quality change requested: maxDim=$maxDim, Q=$jpegQ")
+                ScreenCaptureService.updateQuality(maxDim, jpegQ)
             }
             MessageType.STREAM_STOP -> {
                 stopService(Intent(this, ScreenCaptureService::class.java))

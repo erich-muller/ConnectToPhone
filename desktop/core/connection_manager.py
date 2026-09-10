@@ -33,6 +33,28 @@ class ConnectionState:
     CONNECTED = "CONNECTED"
 
 
+QUALITY_PROFILES = {
+    "max": {"label": "Máxima (Nativa / 2K-4K)", "short_label": "2K-4K", "max_dimension": 0, "jpeg_quality": 85},
+    "1080p": {"label": "Alta (1080p)", "short_label": "1080p", "max_dimension": 1920, "jpeg_quality": 80},
+    "720p": {"label": "Padrão (720p)", "short_label": "720p", "max_dimension": 1280, "jpeg_quality": 75},
+    "480p": {"label": "Média (480p)", "short_label": "480p", "max_dimension": 854, "jpeg_quality": 70},
+    "360p": {"label": "Econômica (360p)", "short_label": "360p", "max_dimension": 640, "jpeg_quality": 60}
+}
+
+
+def normalize_quality_key(key: Any) -> str:
+    mapping = {
+        "high": "1080p",
+        "medium": "720p",
+        "low": "480p",
+        "native": "max",
+        "2k": "max",
+        "4k": "max"
+    }
+    k = str(key).lower()
+    return mapping.get(k, k) if (k in mapping or k in QUALITY_PROFILES) else "720p"
+
+
 class ConnectionManager:
     def __init__(self, config_manager: ConfigManager, clipboard_service: ClipboardService, stream_receiver: StreamReceiver):
         self.state_changed = EventSignal()
@@ -40,6 +62,7 @@ class ConnectionManager:
         self.pairing_requested = EventSignal()
         self.paired_success = EventSignal()
         self.notification_requested = EventSignal()
+        self.quality_changed = EventSignal()
 
         self.config = config_manager
         self.clipboard = clipboard_service
@@ -328,20 +351,45 @@ class ConnectionManager:
             msg = create_message(MessageType.CLIPBOARD_IMAGE, {"format": "png", "data": b64_png}, source_id=self.device_id)
             self.send_message(msg)
 
-    def request_start_screen_mirror(self, width: int = 720, height: int = 1280, fps: int = 30, bitrate: int = 3000000):
+    def request_start_screen_mirror(self, quality: Optional[str] = None, fps: int = 30):
         print(f"[Mirror] 📡 request_start_screen_mirror called! State={self._state}")
         if self._state == ConnectionState.CONNECTED:
+            if quality is None:
+                quality = self.config.get("stream_quality", "720p")
+            quality_key = normalize_quality_key(quality)
+            profile = QUALITY_PROFILES.get(quality_key, QUALITY_PROFILES["720p"])
+
             msg = create_message(
                 MessageType.STREAM_START_REQ,
                 {
-                    "width": width,
-                    "height": height,
+                    "width": 720,
+                    "height": 1280,
                     "fps": fps,
-                    "bitrate": bitrate
+                    "quality": quality_key,
+                    "max_dimension": profile["max_dimension"],
+                    "jpeg_quality": profile["jpeg_quality"]
                 },
                 source_id=self.device_id
             )
             self.send_message(msg)
+
+    def set_stream_quality(self, quality: str):
+        quality_key = normalize_quality_key(quality)
+        self.config.set("stream_quality", quality_key)
+        profile = QUALITY_PROFILES.get(quality_key, QUALITY_PROFILES["720p"])
+        print(f"[Mirror] 🔄 Alterando qualidade do stream para '{quality_key}' ({profile['label']})")
+        if self._state == ConnectionState.CONNECTED:
+            msg = create_message(
+                MessageType.STREAM_QUALITY_REQ,
+                {
+                    "quality": quality_key,
+                    "max_dimension": profile["max_dimension"],
+                    "jpeg_quality": profile["jpeg_quality"]
+                },
+                source_id=self.device_id
+            )
+            self.send_message(msg)
+        self.quality_changed.emit(quality_key)
 
     def request_stop_screen_mirror(self):
         if self._state == ConnectionState.CONNECTED:

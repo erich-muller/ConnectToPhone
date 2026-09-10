@@ -235,9 +235,11 @@ class MirrorWindow(QWidget):
         fps = stats.get("fps", 0)
         res = stats.get("resolution", "")
         self.stats_badge.setText(f"{fps} FPS • {res}")
+        self.stats_badge.setText(res)
 
     def _on_stream_stopped(self, reason: str):
         self.stats_badge.setText("Parado")
+        self.stats_badge.setText("")
 
     def _on_tap(self, norm_x: float, norm_y: float):
         self.conn.send_tap_event(norm_x, norm_y)
