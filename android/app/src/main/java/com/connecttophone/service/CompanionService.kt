@@ -302,6 +302,7 @@ class CompanionService : Service() {
                         val dur = payload.get("duration")?.asLong ?: 200L
                         ClipboardAccessibilityService.performSwipe(startX, startY, endX, endY, dur)
                     }
+                    else -> {}
                 }
             }
             MessageType.INPUT_KEY -> {

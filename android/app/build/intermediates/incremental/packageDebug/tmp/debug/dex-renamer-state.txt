@@ -1,4 +1,4 @@
-#Thu Sep 10 18:33:09 BRT 2026
+#Thu Sep 10 20:52:39 BRT 2026
 base.0=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
 base.1=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
 base.2=/home/erich/Documentos/GitHub/ConnectToPhone/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/1/classes.dex

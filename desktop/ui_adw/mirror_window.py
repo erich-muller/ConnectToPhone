@@ -33,6 +33,7 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
         self.set_title("Espelhamento de Tela — ConnectToPhone")
         self.set_default_size(400, 750)
         self.set_size_request(280, 480)
+        self.add_css_class("mirror-window")
 
         self._apply_css()
         self._setup_ui()
@@ -41,6 +42,9 @@ class MirrorWindowAdw(Adw.ApplicationWindow):
     def _apply_css(self):
         css_provider = Gtk.CssProvider()
         css = """
+        window.mirror-window {
+            background-color: #000000;
+        }
         .mirror-black-canvas {
             background-color: #000000;
         }

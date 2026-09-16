@@ -22,6 +22,19 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
+# Configure GTK4 renderer to prevent GskVulkanRenderer artifacts on NVIDIA Wayland.
+# On Linux Wayland with NVIDIA drivers, GskVulkanRenderer suffers from frame sync / DMA-BUF
+# capture race conditions that cause black stepped bands/rectangles when window sharing (e.g. Google Meet, OBS).
+# Setting GSK_RENDERER to OpenGL (GskGLRenderer) completely eliminates these screen capture artifacts.
+if "GSK_RENDERER" not in os.environ:
+    try:
+        import gi
+        gi.require_version('Gtk', '4.0')
+        from gi.repository import Gtk
+        os.environ["GSK_RENDERER"] = "opengl" if Gtk.get_minor_version() >= 18 else "gl"
+    except Exception:
+        os.environ["GSK_RENDERER"] = "opengl"
+
 HAS_LIBADWAITA = False
 try:
     import gi
