@@ -80,6 +80,7 @@ class CompanionService : Service() {
     private var clipboardSyncManager: ClipboardSyncManager? = null
 
     private var statusUpdateJob: Job? = null
+    private var screenshotObserver: ScreenshotObserver? = null
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
@@ -155,13 +156,30 @@ class CompanionService : Service() {
                     lanClient?.sendClipboardText(text)
                 }
             },
-            onLocalImageCopied = { b64 ->
+            onLocalImageCopied = { b64, isScreenshot ->
                 if (prefs.syncClipboard && prefs.syncImages) {
-                    lanClient?.sendClipboardImage(b64)
+                    lanClient?.sendClipboardImage(b64, isScreenshot)
                 }
             }
         )
         clipboardSyncManager?.start()
+
+        try {
+            screenshotObserver = ScreenshotObserver(this) { base64 ->
+                if (prefs.syncClipboard && prefs.syncImages) {
+                    Log.d(TAG, "Dispatching captured screenshot to Linux PC...")
+                    clipboardSyncManager?.applyLocalScreenshot(base64)
+                }
+            }
+            contentResolver.registerContentObserver(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                true,
+                screenshotObserver!!
+            )
+            Log.d(TAG, "ScreenshotObserver registered successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register ScreenshotObserver: ${e.message}")
+        }
     }
 
     private fun setupNetworkCallback() {
@@ -254,10 +272,6 @@ class CompanionService : Service() {
                 }
             }
             MessageType.STREAM_START_REQ -> {
-                Log.d(TAG, "Screen mirror requested by PC! Launching MainActivity for permission...")
-                val intent = Intent(this, MainActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    putExtra("ACTION_START_SCREEN_CAPTURE", true)
                 val maxDim = payload.get("max_dimension")?.asInt ?: 1280
                 val jpegQ = payload.get("jpeg_quality")?.asInt ?: 75
                 ScreenCaptureService.currentMaxDimension = maxDim
@@ -274,7 +288,6 @@ class CompanionService : Service() {
                     }
                     startActivity(intent)
                 }
-                startActivity(intent)
             }
             MessageType.STREAM_QUALITY_REQ -> {
                 val maxDim = payload.get("max_dimension")?.asInt ?: 1280
@@ -415,6 +428,13 @@ class CompanionService : Service() {
         statusUpdateJob?.cancel()
         lanClient?.disconnect()
         deviceDiscovery?.stopListening()
+        screenshotObserver?.let {
+            try {
+                contentResolver.unregisterContentObserver(it)
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
         clipboardSyncManager?.stop()
 
         networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }

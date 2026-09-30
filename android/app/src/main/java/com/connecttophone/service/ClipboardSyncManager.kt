@@ -12,7 +12,7 @@ import java.security.MessageDigest
 class ClipboardSyncManager(
     private val context: Context,
     private val onLocalTextCopied: (String) -> Unit,
-    private val onLocalImageCopied: (String) -> Unit
+    private val onLocalImageCopied: (String, Boolean) -> Unit
 ) {
     private val TAG = "ClipboardSync"
     private val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -68,7 +68,7 @@ class ClipboardSyncManager(
                         if (hash != lastContentHash) {
                             lastContentHash = hash
                             Log.d(TAG, "Local image copied, sending to PC")
-                            onLocalImageCopied(base64)
+                            onLocalImageCopied(base64, false)
                             return
                         }
                     }
@@ -88,6 +88,16 @@ class ClipboardSyncManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error checking clipboard: ${e.message}")
         }
+    }
+
+    fun applyLocalScreenshot(base64Data: String) {
+        if (base64Data.isEmpty()) return
+        val hash = computeHash(base64Data)
+        if (hash == lastContentHash) return
+
+        lastContentHash = hash
+        Log.d(TAG, "Local screenshot captured, sending to PC")
+        onLocalImageCopied(base64Data, true)
     }
 
     fun applyRemoteText(text: String) {

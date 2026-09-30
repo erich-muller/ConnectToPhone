@@ -116,6 +116,12 @@ class ConnectToPhoneApp:
                 if self.main_window:
                     self.main_window._open_pair_dialog()
 
+        def open_scrcpy_action():
+            if self.connection_manager:
+                success, msg = self.connection_manager.launch_scrcpy()
+                if self.main_window:
+                    self.main_window.show_toast(msg)
+
         def quit_daemon_action():
             if HAS_LIBADWAITA and app_instance:
                 app_instance.quit()
@@ -124,6 +130,7 @@ class ConnectToPhoneApp:
 
         self.open_window_action = open_window_action
         self.open_mirror_action = open_mirror_action
+        self.open_scrcpy_action = open_scrcpy_action
         self.open_pair_action = open_pair_action
         self.quit_daemon_action = quit_daemon_action
 
@@ -152,6 +159,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="ConnectToPhone Linux Desktop Server")
     parser.add_argument("--minimized", "--daemon", action="store_true", help="Start background daemon without opening main window")
     parser.add_argument("--mirror", action="store_true", help="Open screen mirroring window directly")
+    parser.add_argument("--scrcpy", action="store_true", help="Launch screen mirroring via scrcpy directly")
     parser.add_argument("--pair", action="store_true", help="Open pairing dialog directly")
     parser.add_argument("--quit", action="store_true", help="Stop running ConnectToPhone daemon")
     parser.add_argument("--cairo", action="store_true", help="Force software Cairo rendering in GTK4 (useful for screen capture troubleshooting)")
@@ -193,6 +201,10 @@ def main():
             mirror_act.connect("activate", lambda a, p: app_helper.open_mirror_action())
             app.add_action(mirror_act)
 
+            scrcpy_act = Gio.SimpleAction.new("scrcpy", None)
+            scrcpy_act.connect("activate", lambda a, p: app_helper.open_scrcpy_action())
+            app.add_action(scrcpy_act)
+
             pair_act = Gio.SimpleAction.new("pair", None)
             pair_act.connect("activate", lambda a, p: app_helper.open_pair_action())
             app.add_action(pair_act)
@@ -214,6 +226,9 @@ def main():
                 return 0
             if "--mirror" in args_list:
                 app_helper.open_mirror_action()
+                return 0
+            if "--scrcpy" in args_list:
+                app_helper.open_scrcpy_action()
                 return 0
             if "--pair" in args_list:
                 app_helper.open_pair_action()

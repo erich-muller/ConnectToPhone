@@ -131,6 +131,67 @@ class TestFixVerification(unittest.TestCase):
         if test_config_path.exists():
             test_config_path.unlink()
 
+    def test_screenshot_and_image_sync_notification(self):
+        import base64
+        test_config_path = Path("/tmp/connect_test_screen_config.json")
+        if test_config_path.exists():
+            test_config_path.unlink()
+
+        cfg = ConfigManager(config_file=test_config_path)
+        clip = ClipboardService(device_id=cfg.get("device_id"))
+        stream = StreamReceiver(device_id=cfg.get("device_id"))
+        conn = ConnectionManager(config_manager=cfg, clipboard_service=clip, stream_receiver=stream)
+
+        notifications = []
+        conn.notification_requested.connect(lambda title, body: notifications.append((title, body)))
+
+        img_b64 = base64.b64encode(b"samplepngdatabytes12345678").decode("ascii")
+        conn._handle_authenticated_message("CLIPBOARD_IMAGE", {"data": img_b64, "is_screenshot": True}, "phone-1")
+
+        self.assertEqual(len(notifications), 1)
+        self.assertEqual(notifications[0][0], "Captura de Tela Sincronizada")
+
+        if test_config_path.exists():
+            test_config_path.unlink()
+
+    def test_scrcpy_launch_helper(self):
+        test_config_path = Path("/tmp/connect_test_scrcpy_config.json")
+        if test_config_path.exists():
+            test_config_path.unlink()
+
+        cfg = ConfigManager(config_file=test_config_path)
+        clip = ClipboardService(device_id=cfg.get("device_id"))
+        stream = StreamReceiver(device_id=cfg.get("device_id"))
+        conn = ConnectionManager(config_manager=cfg, clipboard_service=clip, stream_receiver=stream)
+
+        success, msg = conn.launch_scrcpy()
+        self.assertIsInstance(success, bool)
+        self.assertIsInstance(msg, str)
+        self.assertTrue(len(msg) > 0)
+
+        if test_config_path.exists():
+            test_config_path.unlink()
+
+    def test_no_emojis_in_source_tree(self):
+        import re
+        import glob
+        emoji_pattern = re.compile(r"[\U00010000-\U0010ffff\u2600-\u27bf\u2300-\u23ff]")
+        files_to_check = (
+            glob.glob("desktop/ui_adw/**/*.py", recursive=True) +
+            glob.glob("desktop/gnome-extension/**/*.js", recursive=True) +
+            glob.glob("desktop/core/**/*.py", recursive=True) +
+            glob.glob("android/app/src/main/**/*.kt", recursive=True) +
+            glob.glob("android/app/src/main/**/*.xml", recursive=True)
+        )
+        for filepath in files_to_check:
+            with open(filepath, "r", encoding="utf-8") as f:
+                for idx, line in enumerate(f, 1):
+                    emojis = emoji_pattern.findall(line)
+                    self.assertEqual(
+                        emojis, [],
+                        f"Emoji found in {filepath}:{idx}: {emojis}"
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

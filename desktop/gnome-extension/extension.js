@@ -63,13 +63,19 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
         });
         this.menu.addMenuItem(this._openAppItem);
 
-        this._mirrorItem = new PopupMenu.PopupImageMenuItem('Espelhar Tela', 'video-display-symbolic');
+        this._mirrorItem = new PopupMenu.PopupImageMenuItem('Espelhar Tela (Nativo)', 'video-display-symbolic');
         this._mirrorItem.connect('activate', () => {
             this._extension.callDaemonMethod('OpenMirror');
         });
         this.menu.addMenuItem(this._mirrorItem);
 
-        this._pairItem = new PopupMenu.PopupImageMenuItem('Conectar Novo Celular (QR)', 'view-refresh-symbolic');
+        this._scrcpyItem = new PopupMenu.PopupImageMenuItem('Espelhar com Scrcpy', 'video-joined-displays-symbolic');
+        this._scrcpyItem.connect('activate', () => {
+            this._extension.callDaemonMethod('OpenScrcpy');
+        });
+        this.menu.addMenuItem(this._scrcpyItem);
+
+        this._pairItem = new PopupMenu.PopupImageMenuItem('Conectar Novo Celular', 'view-refresh-symbolic');
         this._pairItem.connect('activate', () => {
             this._extension.callDaemonMethod('OpenPairDialog');
         });
@@ -153,7 +159,7 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
 
             if (isConnected && status.device_name && status.device_name !== 'Nenhum dispositivo') {
                 this.title = devName;
-                this.subtitle = isCharging ? `⚡ ${battery}%` : `${battery}%`;
+                this.subtitle = isCharging ? `${battery}% (Carregando)` : `${battery}%`;
                 this.iconName = 'phone-symbolic';
 
                 this.menu.setHeader('phone-symbolic', devName, 'Conectado via Wi-Fi');
@@ -172,6 +178,7 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
                 this._batteryItem.setIcon(batteryIcon);
                 this._batteryItem.label.text = `Bateria: ${battery}% ${isCharging ? '(Carregando)' : ''}`;
                 this._mirrorItem.setSensitive(true);
+                this._scrcpyItem.setSensitive(true);
             } else {
                 this.title = 'ConnectToPhone';
                 this.subtitle = 'Aguardando celular...';
@@ -181,6 +188,7 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
                 this._deviceInfoItem.label.text = 'Aguardando celular na rede local...';
                 this._batteryItem.label.text = 'Bateria: --%';
                 this._mirrorItem.setSensitive(false);
+                this._scrcpyItem.setSensitive(false);
             }
         } else {
             this.title = 'Celular';
@@ -191,6 +199,7 @@ class ConnectToPhoneToggle extends QuickSettings.QuickMenuToggle {
             this._deviceInfoItem.label.text = 'Clique para ativar em segundo plano';
             this._batteryItem.label.text = 'Bateria: --%';
             this._mirrorItem.setSensitive(false);
+            this._scrcpyItem.setSensitive(false);
             this._daemonToggleItem.label.text = 'Iniciar Serviço em 2º Plano';
             this._daemonToggleItem.setIcon('media-playback-start-symbolic');
         }
@@ -457,6 +466,8 @@ export default class ConnectToPhoneExtension extends Extension {
             let flag = '';
             if (methodName === 'OpenMirror') {
                 flag = '--mirror';
+            } else if (methodName === 'OpenScrcpy') {
+                flag = '--scrcpy';
             } else if (methodName === 'OpenPairDialog') {
                 flag = '--pair';
             } else if (methodName === 'Daemon') {

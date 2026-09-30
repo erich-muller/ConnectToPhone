@@ -169,12 +169,12 @@ class LanConnectionClient(
         sendJson(gson.toJson(msg))
     }
 
-    fun sendClipboardImage(base64Data: String) {
+    fun sendClipboardImage(base64Data: String, isScreenshot: Boolean = false) {
         if (!isConnected) return
         val msg = BaseMessage(
             type = MessageType.CLIPBOARD_IMAGE,
             sourceId = deviceId,
-            payload = ClipboardImagePayload(format = "png", data = base64Data)
+            payload = ClipboardImagePayload(format = "png", data = base64Data, isScreenshot = isScreenshot)
         )
         sendJson(gson.toJson(msg))
     }

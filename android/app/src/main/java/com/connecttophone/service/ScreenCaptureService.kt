@@ -155,16 +155,11 @@ class ScreenCaptureService : Service() {
         val realH = bounds.height().coerceAtLeast(640)
         screenDensity = resources.displayMetrics.densityDpi
 
-        val maxDimension = 1280
-        val scale = if (maxOf(realW, realH) > maxDimension) {
-            maxDimension.toFloat() / maxOf(realW, realH)
         val maxDim = currentMaxDimension
         val scale = if (maxDim > 0 && maxOf(realW, realH) > maxDim) {
             maxDim.toFloat() / maxOf(realW, realH)
         } else 1.0f
 
-        val newW = (((realW * scale).toInt() / 8) * 8).coerceAtLeast(320)
-        val newH = (((realH * scale).toInt() / 8) * 8).coerceAtLeast(480)
         val newW = (((realW * scale).toInt() / 8) * 8).coerceAtLeast(160)
         val newH = (((realH * scale).toInt() / 8) * 8).coerceAtLeast(160)
 
@@ -172,7 +167,6 @@ class ScreenCaptureService : Service() {
         screenWidth = newW
         screenHeight = newH
 
-        Log.d(TAG, "Screen metrics: ${realW}x${realH} -> Capture resolution: ${screenWidth}x${screenHeight} (density=$screenDensity, changed=$changed)")
         Log.d(TAG, "Screen metrics: ${realW}x${realH} -> Capture resolution: ${screenWidth}x${screenHeight} (density=$screenDensity, maxDim=$maxDim, changed=$changed)")
         return changed
     }
@@ -309,7 +303,6 @@ class ScreenCaptureService : Service() {
             bmp.copyPixelsFromBuffer(directBuf)
 
             outStream.reset()
-            bmp.compress(Bitmap.CompressFormat.JPEG, 75, outStream)
             bmp.compress(Bitmap.CompressFormat.JPEG, currentJpegQuality, outStream)
             val jpegBytes = outStream.toByteArray()
             val base64Frame = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
@@ -317,7 +310,6 @@ class ScreenCaptureService : Service() {
             CompanionService.sendScreenFrame(base64Frame, screenWidth, screenHeight)
             frameCount++
             if (frameCount == 1L || frameCount % 60L == 0L) {
-                Log.d(TAG, "Sent frame #$frameCount (${jpegBytes.size} bytes, ${screenWidth}x${screenHeight})")
                 Log.d(TAG, "Sent frame #$frameCount (${jpegBytes.size} bytes, ${screenWidth}x${screenHeight}, Q=$currentJpegQuality)")
             }
 

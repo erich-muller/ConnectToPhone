@@ -73,7 +73,8 @@ data class ClipboardTextPayload(
 
 data class ClipboardImagePayload(
     @SerializedName("format") val format: String = "png",
-    @SerializedName("data") val data: String // Base64
+    @SerializedName("data") val data: String, // Base64
+    @SerializedName("is_screenshot") val isScreenshot: Boolean = false
 )
 
 data class StreamStartReqPayload(

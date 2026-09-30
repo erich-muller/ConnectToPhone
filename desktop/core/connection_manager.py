@@ -6,10 +6,13 @@ Uses thread-safe EventSignal for zero-latency communication with GTK4/Libadwaita
 """
 
 import asyncio
+import os
+import shutil
+import subprocess
 import threading
 import json
 import time
-from typing import Optional, Dict, Any, Callable, Set, List
+from typing import Optional, Dict, Any, Callable, Set, List, Tuple
 
 from protocol.protocol_spec import (
     MessageType, DEFAULT_WS_PORT, create_message,
@@ -169,7 +172,7 @@ class ConnectionManager:
             self._set_state(ConnectionState.LISTENING, f"Porta {self.ws_port}")
             print(f"[Connection] WebSocket server listening on 0.0.0.0:{self.ws_port}")
         except Exception as e:
-            print(f"[Connection] ❌ Erro ao iniciar servidor WebSocket na porta {self.ws_port}: {e}")
+            print(f"[Connection] Erro ao iniciar servidor WebSocket na porta {self.ws_port}: {e}")
             self._set_state(ConnectionState.DISCONNECTED, f"Falha ao iniciar: {e}")
             return
 
@@ -184,7 +187,7 @@ class ConnectionManager:
 
     async def _handle_client_connection(self, websocket):
         client_ip = websocket.remote_address[0] if isinstance(websocket.remote_address, tuple) else str(websocket.remote_address)
-        print(f"[Connection] 📱 Nova conexão de cliente recebida de {client_ip}")
+        print(f"[Connection] Nova conexão de cliente recebida de {client_ip}")
 
         if self._active_ws is not None and self._active_ws != websocket:
             try:
@@ -209,16 +212,16 @@ class ConnectionManager:
                     msg_type = msg.get("type")
                     source_id = msg.get("source_id", "")
                     payload = msg.get("payload", {})
-                    print(f"[Connection] 📩 Raw msg_type: {msg_type}, auth={authenticated}")
+                    print(f"[Connection] Mensagem recebida: {msg_type}, autenticado={authenticated}")
 
                     if msg_type == MessageType.AUTH_CONNECT:
                         token = payload.get("auth_token", "")
                         dev_name = payload.get("device_name", "Android")
                         paired_info = self.config.get_paired_device(source_id)
-                        print(f"[Connection] 🔐 Pedido de autenticação automática de '{dev_name}' ({client_ip}, id={source_id})")
+                        print(f"[Connection] Autenticação de '{dev_name}' ({client_ip}, id={source_id})")
 
                         if paired_info and verify_token(token, paired_info.get("auth_token", "")):
-                            print(f"[Connection] ✅ Token de autenticação válido! Conexão aceita.")
+                            print(f"[Connection] Token de autenticação válido. Conexão aceita.")
                             authenticated = True
                             device_id = source_id
                             device_name = dev_name
@@ -234,9 +237,9 @@ class ConnectionManager:
                             resp = create_message(MessageType.AUTH_RESPONSE, {"status": "accepted", "device_name": self.device_name}, source_id=self.device_id)
                             await websocket.send(serialize_message(resp))
                             self._set_state(ConnectionState.CONNECTED, f"Conectado a {device_name}")
-                            self.notification_requested.emit("Celular Conectado", f"{device_name} conectado automaticamente na rede local.")
+                            self.notification_requested.emit("Celular Conectado", f"{device_name} conectado na rede local.")
                         else:
-                            print(f"[Connection] ❌ Token de autenticação inválido.")
+                            print(f"[Connection] Token de autenticação inválido.")
                             resp = create_message(MessageType.AUTH_RESPONSE, {"status": "rejected", "reason": "invalid_token"}, source_id=self.device_id)
                             await websocket.send(serialize_message(resp))
                             await websocket.close(1008, "Token de autenticação inválido")
@@ -246,10 +249,10 @@ class ConnectionManager:
                         pin = payload.get("pin", "")
                         dev_name = payload.get("device_name", "Android")
                         device_id = source_id
-                        print(f"[Connection] 🔑 Pedido de Pareamento de '{dev_name}' com PIN='{pin}' (PIN esperado='{self._current_pairing_pin}')")
+                        print(f"[Connection] Pedido de Pareamento de '{dev_name}' com PIN='{pin}'")
 
                         if pin == self._current_pairing_pin:
-                            print(f"[Connection] ✅ PIN correto! Pareamento aceito com sucesso.")
+                            print(f"[Connection] PIN correto. Pareamento aceito com sucesso.")
                             new_token = generate_auth_token()
                             self.config.add_paired_device(device_id, dev_name, new_token, client_ip)
                             self.discovery.add_target_ip(client_ip)
@@ -269,9 +272,9 @@ class ConnectionManager:
                             await websocket.send(serialize_message(resp))
                             self._set_state(ConnectionState.CONNECTED, f"Pareado com {device_name}")
                             self.paired_success.emit(device_id, device_name)
-                            self.notification_requested.emit("Pareamento Concluído", f"Dispositivo {device_name} pareado com sucesso!")
+                            self.notification_requested.emit("Pareamento Concluído", f"Dispositivo {device_name} pareado com sucesso.")
                         else:
-                            print(f"[Connection] ❌ PIN incorreto! Recebido: '{pin}', Esperado: '{self._current_pairing_pin}'")
+                            print(f"[Connection] PIN incorreto. Recebido: '{pin}', Esperado: '{self._current_pairing_pin}'")
                             resp = create_message(
                                 MessageType.PAIR_RESPONSE,
                                 {"status": "rejected", "reason": "invalid_pin"},
@@ -285,7 +288,7 @@ class ConnectionManager:
                         self._handle_authenticated_message(msg_type, payload, source_id)
 
         except Exception as e:
-            print(f"[Connection] Connection disconnected from {client_ip}: {e}")
+            print(f"[Connection] Conexão encerrada com {client_ip}: {e}")
         finally:
             if self._active_ws == websocket:
                 self._active_ws = None
@@ -300,7 +303,6 @@ class ConnectionManager:
         elif msg_type == MessageType.PONG:
             pass
         elif msg_type == MessageType.DEVICE_STATUS:
-            print(f"[Connection] 🔋 Received DEVICE_STATUS: {payload}")
             self.device_status_updated.emit(payload)
         elif msg_type == MessageType.CLIPBOARD_TEXT:
             text = payload.get("content", "")
@@ -309,9 +311,13 @@ class ConnectionManager:
                 self.notification_requested.emit("Texto Copiado do Celular", text[:50] + ("..." if len(text) > 50 else ""))
         elif msg_type == MessageType.CLIPBOARD_IMAGE:
             img_b64 = payload.get("data", "")
+            is_screenshot = payload.get("is_screenshot", False)
             if img_b64:
                 self.clipboard.handle_remote_image(img_b64, source_id)
-                self.notification_requested.emit("Imagem Copiada do Celular", "Nova imagem inserida na área de transferência.")
+                if is_screenshot:
+                    self.notification_requested.emit("Captura de Tela Sincronizada", "O print do celular foi copiado para a sua área de transferência.")
+                else:
+                    self.notification_requested.emit("Imagem Copiada do Celular", "Nova imagem inserida na área de transferência.")
         elif msg_type == MessageType.STREAM_START_RESP:
             self.stream.on_stream_start_response(payload)
         elif msg_type == MessageType.STREAM_FRAME:
@@ -326,7 +332,7 @@ class ConnectionManager:
 
         paired = self.config.get_paired_device(source_id)
         if paired and self._state != ConnectionState.CONNECTED:
-            print(f"[Discovery] Paired device {dev_name} ({sender_ip}) detected on LAN")
+            print(f"[Discovery] Dispositivo pareado {dev_name} ({sender_ip}) detectado na rede local")
 
     def send_message(self, msg: Dict[str, Any]):
         if not self._loop or not self._active_ws or not self._running:
@@ -346,13 +352,17 @@ class ConnectionManager:
             msg = create_message(MessageType.CLIPBOARD_TEXT, {"content": text}, source_id=self.device_id)
             self.send_message(msg)
 
-    def send_clipboard_image(self, b64_png: str):
+    def send_clipboard_image(self, b64_png: str, is_screenshot: bool = False):
         if self._state == ConnectionState.CONNECTED:
-            msg = create_message(MessageType.CLIPBOARD_IMAGE, {"format": "png", "data": b64_png}, source_id=self.device_id)
+            msg = create_message(
+                MessageType.CLIPBOARD_IMAGE,
+                {"format": "png", "data": b64_png, "is_screenshot": is_screenshot},
+                source_id=self.device_id
+            )
             self.send_message(msg)
 
     def request_start_screen_mirror(self, quality: Optional[str] = None, fps: int = 30):
-        print(f"[Mirror] 📡 request_start_screen_mirror called! State={self._state}")
+        print(f"[Mirror] request_start_screen_mirror chamado. Estado={self._state}")
         if self._state == ConnectionState.CONNECTED:
             if quality is None:
                 quality = self.config.get("stream_quality", "720p")
@@ -377,7 +387,7 @@ class ConnectionManager:
         quality_key = normalize_quality_key(quality)
         self.config.set("stream_quality", quality_key)
         profile = QUALITY_PROFILES.get(quality_key, QUALITY_PROFILES["720p"])
-        print(f"[Mirror] 🔄 Alterando qualidade do stream para '{quality_key}' ({profile['label']})")
+        print(f"[Mirror] Alterando qualidade do stream para '{quality_key}' ({profile['label']})")
         if self._state == ConnectionState.CONNECTED:
             msg = create_message(
                 MessageType.STREAM_QUALITY_REQ,
@@ -396,6 +406,40 @@ class ConnectionManager:
             msg = create_message(MessageType.STREAM_STOP, source_id=self.device_id)
             self.send_message(msg)
             self.stream.on_stream_stop("Parado pelo usuário no Linux")
+
+    def launch_scrcpy(self) -> Tuple[bool, str]:
+        """Launch scrcpy over Wi-Fi for the connected phone."""
+        dev = self.connected_device or {}
+        ip = dev.get("ip")
+        if not ip:
+            paired = self.config.get_all_paired_devices()
+            if paired:
+                first_id = list(paired.keys())[0]
+                ip = paired[first_id].get("last_ip")
+
+        scrcpy_bin = shutil.which("scrcpy")
+        if not scrcpy_bin:
+            return False, "O programa 'scrcpy' não foi encontrado. Você pode instalá-lo com: sudo dnf install scrcpy"
+
+        adb_bin = shutil.which("adb") or os.path.expanduser("~/Android/Sdk/platform-tools/adb")
+        if not os.path.exists(adb_bin) and not shutil.which("adb"):
+            adb_bin = "adb"
+
+        # If IP is available, try connecting adb tcpip
+        if ip:
+            try:
+                subprocess.run([adb_bin, "connect", f"{ip}:5555"], timeout=3, capture_output=True)
+            except Exception:
+                pass
+
+        try:
+            cmd = [scrcpy_bin]
+            if ip:
+                cmd.extend(["--tcpip", f"{ip}:5555"])
+            subprocess.Popen(cmd)
+            return True, "Scrcpy iniciado com sucesso."
+        except Exception as e:
+            return False, f"Falha ao iniciar scrcpy: {e}"
 
     def send_tap_event(self, norm_x: float, norm_y: float, duration_ms: int = 50):
         if self._state == ConnectionState.CONNECTED:

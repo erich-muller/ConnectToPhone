@@ -97,4 +97,4 @@ if command -v gnome-extensions >/dev/null 2>&1; then
     gnome-extensions enable "${EXT_UUID}" 2>/dev/null || true
 fi
 
-echo "🎉 Instalação e configuração de segundo plano concluídas com sucesso!"
+echo "Instalação e configuração de segundo plano concluídas com sucesso."

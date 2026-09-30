@@ -1,6 +1,7 @@
 """
 Native GNOME / Libadwaita Main Window for ConnectToPhone.
 Compliant with GNOME Human Interface Guidelines (HIG).
+Clean, minimalist, no emojis, standard symbolic icons and clear texts.
 """
 
 import os
@@ -34,7 +35,7 @@ class ClipboardRowAdw(Adw.ActionRow):
         self.set_title(preview_text)
         
         time_str = time.strftime("%H:%M", time.localtime(item.timestamp))
-        source_str = "PC" if item.source == "local" else "Celular"
+        source_str = "Computador" if item.source == "local" else "Celular"
         self.set_subtitle(f"{source_str} • {time_str}")
 
         if item.type == "image":
@@ -92,7 +93,8 @@ class MainWindowAdw(Adw.ApplicationWindow):
 
         # Primary Menu Button
         menu = Gio.Menu()
-        menu.append("Espelhar Tela", "app.mirror")
+        menu.append("Espelhar Tela (Nativo)", "app.mirror")
+        menu.append("Espelhar com Scrcpy", "app.scrcpy")
         menu.append("Conectar Novo Celular", "app.pair")
         menu.append("Encerrar ConnectToPhone", "app.quit")
 
@@ -154,14 +156,15 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.device_name_label.add_css_class("title-2")
         info_box.append(self.device_name_label)
 
-        status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         status_row.set_halign(Gtk.Align.START)
 
-        self.status_label = Gtk.Label(label="🟡 Aguardando celular...")
+        self.status_label = Gtk.Label(label="Aguardando celular na rede local...")
         self.status_label.add_css_class("caption")
+        self.status_label.add_css_class("dim-label")
         status_row.append(self.status_label)
 
-        self.battery_label = Gtk.Label(label="🔋 --%")
+        self.battery_label = Gtk.Label(label="Bateria: --%")
         self.battery_label.add_css_class("caption")
         status_row.append(self.battery_label)
 
@@ -187,7 +190,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.reconnect_btn.connect("clicked", lambda b: self._on_reconnect_clicked())
         action_btn_box.append(self.reconnect_btn)
 
-        self.connect_btn = Gtk.Button(label="Vincular Novo [QR]")
+        self.connect_btn = Gtk.Button(label="Vincular Novo")
         self.connect_btn.set_icon_name("view-refresh-symbolic")
         self.connect_btn.set_hexpand(True)
         self.connect_btn.add_css_class("suggested-action")
@@ -206,15 +209,15 @@ class MainWindowAdw(Adw.ApplicationWindow):
         # Sync Clipboard Switch
         self.sync_clip_row = Adw.SwitchRow()
         self.sync_clip_row.set_title("Sincronizar Área de Transferência")
-        self.sync_clip_row.set_subtitle("Transfere textos e links copiados em tempo real (em segundo plano)")
+        self.sync_clip_row.set_subtitle("Transfere textos e links em tempo real continuamente")
         self.sync_clip_row.set_active(self.config.get("sync_clipboard", True))
         self.sync_clip_row.connect("notify::active", self._on_sync_clip_toggled)
         pref_group.add(self.sync_clip_row)
 
         # Sync Images Switch
         self.sync_img_row = Adw.SwitchRow()
-        self.sync_img_row.set_title("Sincronizar Imagens")
-        self.sync_img_row.set_subtitle("Transfere capturas de tela e fotos copiadas")
+        self.sync_img_row.set_title("Sincronizar Imagens e Capturas de Tela")
+        self.sync_img_row.set_subtitle("Transfere prints de tela e imagens copiadas automaticamente")
         self.sync_img_row.set_active(self.config.get("sync_images", True))
         self.sync_img_row.connect("notify::active", self._on_sync_img_toggled)
         pref_group.add(self.sync_img_row)
@@ -222,7 +225,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
         # Mirror Quality ComboRow
         self.quality_row = Adw.ComboRow()
         self.quality_row.set_title("Qualidade do Espelhamento")
-        self.quality_row.set_subtitle("Resolução transmitida pelo celular (Máxima 2K-4K, 1080p, 720p, 480p, 360p)")
+        self.quality_row.set_subtitle("Resolução transmitida pelo celular")
 
         from desktop.core.connection_manager import QUALITY_PROFILES, normalize_quality_key
         self._quality_keys = list(QUALITY_PROFILES.keys())
@@ -254,7 +257,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
         # Empty state row
         self.empty_history_row = Adw.ActionRow()
         self.empty_history_row.set_title("Nenhum item recente no histórico")
-        self.empty_history_row.set_subtitle("Itens copiados no PC ou celular aparecerão aqui")
+        self.empty_history_row.set_subtitle("Textos e capturas de tela sincronizados aparecerão aqui")
         self.history_group.add(self.empty_history_row)
 
         main_box.append(self.history_group)
@@ -263,7 +266,7 @@ class MainWindowAdw(Adw.ApplicationWindow):
         # 4. FOOTER INFO
         # ----------------------------------------------------
         footer_label = Gtk.Label(
-            label=f"IP: {get_local_ip()}  |  Porta: {self.conn.ws_port}  |  Descoberta LAN: Ativa"
+            label=f"IP Local: {get_local_ip()}  |  Porta: {self.conn.ws_port}  |  Descoberta de Rede: Ativa"
         )
         footer_label.add_css_class("dim-label")
         footer_label.add_css_class("caption")
@@ -297,7 +300,11 @@ class MainWindowAdw(Adw.ApplicationWindow):
             name = dev.get("name", "Celular Android")
             model = dev.get("model", "")
             self.device_name_label.set_label(f"{name} ({model})" if model else name)
-            self.status_label.set_label("🟢 Conectado")
+            
+            self.status_label.set_label("Conectado")
+            self.status_label.remove_css_class("dim-label")
+            self.status_label.add_css_class("success")
+
             self.mirror_btn.set_sensitive(True)
             self.reconnect_btn.set_visible(False)
 
@@ -313,14 +320,16 @@ class MainWindowAdw(Adw.ApplicationWindow):
                 last_ip = dev_info.get("last_ip", "")
                 ip_str = f" ({last_ip})" if last_ip else ""
                 self.device_name_label.set_label(paired_name)
-                self.status_label.set_label(f"🟡 Desconectado{ip_str} • Aguardando...")
+                self.status_label.set_label(f"Desconectado{ip_str} • Aguardando...")
                 self.reconnect_btn.set_visible(True)
             else:
                 self.device_name_label.set_label("Nenhum dispositivo")
-                self.status_label.set_label("🟡 Aguardando celular...")
+                self.status_label.set_label("Aguardando celular na rede local...")
                 self.reconnect_btn.set_visible(False)
 
-            self.battery_label.set_label("🔋 --%")
+            self.status_label.remove_css_class("success")
+            self.status_label.add_css_class("dim-label")
+            self.battery_label.set_label("Bateria: --%")
             self.mirror_btn.set_sensitive(False)
 
             default_icon = os.path.join(ASSETS_DIR, "phone.svg")
@@ -333,8 +342,8 @@ class MainWindowAdw(Adw.ApplicationWindow):
     def _on_device_status_updated(self, status: Dict[str, Any]):
         battery = status.get("battery_level", 0)
         charging = status.get("is_charging", False)
-        symbol = "⚡ " if charging else "🔋 "
-        self.battery_label.set_label(f"{symbol}{battery}%")
+        charge_str = " (Carregando)" if charging else ""
+        self.battery_label.set_label(f"Bateria: {battery}%{charge_str}")
 
     def _on_paired_success(self, device_id: str, device_name: str):
         self._update_device_ui()
@@ -397,11 +406,11 @@ class MainWindowAdw(Adw.ApplicationWindow):
             elif self.clipboard._wl_copy_bin:
                 import subprocess
                 subprocess.run([self.clipboard._wl_copy_bin, item.content], check=False)
-            self.show_toast("Texto copiado para a área de transferência!")
+            self.show_toast("Texto copiado para a área de transferência.")
 
     def _clear_history(self, button):
         self.clipboard.clear_history()
-        self.show_toast("Histórico limpo!")
+        self.show_toast("Histórico limpo.")
 
     def _open_pair_dialog(self, button=None):
         if self.pair_dialog is None or not self.pair_dialog.get_visible():
@@ -431,6 +440,10 @@ class MainWindowAdw(Adw.ApplicationWindow):
         self.mirror_window.set_visible(True)
         self.mirror_window.present()
         self.conn.request_start_screen_mirror()
+
+    def _open_scrcpy(self, button=None):
+        success, msg = self.conn.launch_scrcpy()
+        self.show_toast(msg)
 
     def _queue_frame_for_render(self, frame_bytes: bytes, stats: Dict[str, Any]):
         self._pending_frame = (frame_bytes, stats)
