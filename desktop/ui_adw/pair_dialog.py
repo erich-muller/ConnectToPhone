@@ -65,7 +65,7 @@ class PairDialogAdw(Adw.Window):
         main_box.append(title_label)
 
         sub_label = Gtk.Label(
-            label="Abra o aplicativo no aparelho e escaneie o código QR:"
+            label="Abra o app ConnectToPhone no seu celular e aponte para o QR Code abaixo:"
         )
         sub_label.set_wrap(True)
         sub_label.set_justify(Gtk.Justification.CENTER)
@@ -92,8 +92,8 @@ class PairDialogAdw(Adw.Window):
 
         main_box.append(qr_card)
 
-        # Alternative PIN Section
-        or_label = Gtk.Label(label="Ou utilize o código de pareamento")
+        # Divider or Alternative PIN Section
+        or_label = Gtk.Label(label="— OU USE O CÓDIGO PIN —")
         or_label.add_css_class("dim-label")
         or_label.add_css_class("caption")
         or_label.set_margin_top(4)

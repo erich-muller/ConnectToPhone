@@ -7,11 +7,3 @@ __pycache__/
 *$py.class
 .venv/
 venv/
-.idea/
-*.iml
-
-# Android build outputs
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties

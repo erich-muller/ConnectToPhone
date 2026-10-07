@@ -28,7 +28,6 @@ DBUS_INTROSPECTION_XML = """
     </method>
     <method name="OpenWindow"/>
     <method name="OpenMirror"/>
-    <method name="OpenScrcpy"/>
     <method name="OpenPairDialog"/>
     <method name="ReconnectDevice"/>
     <method name="TriggerDiscovery"/>
@@ -178,7 +177,7 @@ class DBusService:
         self.emit_status_changed()
 
     def _on_device_status(self, status: Dict[str, Any]):
-        print(f"[DBus] _on_device_status called with: {status}")
+        print(f"[DBus] 🔋 _on_device_status called with: {status}")
         self._battery_level = status.get("battery_level", self._battery_level)
         self._is_charging = status.get("is_charging", self._is_charging)
         self.emit_status_changed()
@@ -206,10 +205,6 @@ class DBusService:
             elif method_name == "OpenMirror":
                 if self.on_open_mirror:
                     GLib.idle_add(self.on_open_mirror)
-                invocation.return_value(None)
-
-            elif method_name == "OpenScrcpy":
-                self.conn.launch_scrcpy()
                 invocation.return_value(None)
 
             elif method_name == "OpenPairDialog":

@@ -27,13 +27,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: PreferencesManager
     private val gson = Gson()
 
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val grantedCount = permissions.values.count { it }
-        Log.d("MainActivity", "Permissions updated: $grantedCount granted")
-    }
-
     private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents != null) {
             handleQrCodeResult(result.contents)
@@ -60,30 +53,10 @@ class MainActivity : AppCompatActivity() {
 
         prefs = PreferencesManager(this)
 
-        checkAndRequestPermissions()
         ensureCompanionServiceRunning()
         setupUI()
         setupCompanionListeners()
         handleIntent(intent)
-    }
-
-    private fun checkAndRequestPermissions() {
-        val perms = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                perms.add(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-            if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                perms.add(android.Manifest.permission.READ_MEDIA_IMAGES)
-            }
-        } else {
-            if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                perms.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-        }
-        if (perms.isNotEmpty()) {
-            permissionLauncher.launch(perms.toTypedArray())
-        }
     }
 
     override fun onResume() {

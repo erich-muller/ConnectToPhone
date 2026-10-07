@@ -184,7 +184,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 preview=preview
             )
             self._add_to_history(item)
-            self._emit_local_image(b64_str, is_screenshot=True)
+            self._emit_local_image(b64_str)
             print(f"[Clipboard] (Screenshot File Detected) Synced {preview}")
         except Exception as e:
             print(f"[Clipboard] Error reading screenshot file: {e}")
@@ -283,7 +283,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
             except Exception:
                 pass
 
-    def _emit_local_image(self, b64_str: str, is_screenshot: bool = False):
+    def _emit_local_image(self, b64_str: str):
         if HAS_PYQT:
             try:
                 self.local_image_copied.emit(b64_str)
@@ -291,17 +291,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
                 pass
         for cb in list(self._on_local_image_listeners):
             try:
-                import inspect
-                sig = inspect.signature(cb)
-                if len(sig.parameters) >= 2:
-                    cb(b64_str, is_screenshot)
-                else:
-                    cb(b64_str)
-            except TypeError:
-                try:
-                    cb(b64_str)
-                except Exception:
-                    pass
+                cb(b64_str)
             except Exception:
                 pass
 
@@ -672,7 +662,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
         )
         self._add_to_history(item)
         self._emit_remote_applied(item)
-        print(f"[Clipboard] Remote text applied to Linux clipboard: {preview!r}")
+        print(f"[Clipboard] ✅ Remote text applied to Linux clipboard: {preview!r}")
 
     def _apply_gdk_text(self, text: str):
         if HAS_GTK:
@@ -726,7 +716,7 @@ class ClipboardService(QObject if HAS_PYQT else object):
             )
             self._add_to_history(item)
             self._emit_remote_applied(item)
-            print(f"[Clipboard] Remote image applied to Linux clipboard ({len(raw_bytes)} bytes)")
+            print(f"[Clipboard] ✅ Remote image applied to Linux clipboard ({len(raw_bytes)} bytes)")
         except Exception as e:
             print(f"[Clipboard] Error applying remote image: {e}")
 
